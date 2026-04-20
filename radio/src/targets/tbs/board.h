@@ -24,6 +24,9 @@ void rotaryEncoderCheck();
 #define ROTARY_ENCODER_INVERT
 #endif
 
+// TBS Tango II / Mambo have no trainer port — SLAVE_MODE always false.
+#define SLAVE_MODE()                    (false)
+
 #if defined(RADIO_TANGO)
 #define MY_DEVICE_NAME                  "Tango II"
 #elif defined(RADIO_MAMBO)
@@ -180,7 +183,9 @@ enum CalibratedAnalogs {
   #define IS_POT(x)                   (false)
 #endif
 
-extern uint16_t adcValues[NUM_ANALOGS];
+// NOTE: adcValues[] lives in hal/adc_driver.cpp (MAX_ANALOG_INPUTS sized) in
+// modern EdgeTX; access it via anaIn() / getAnalogValue() rather than
+// declaring it here.
 
 // Battery driver
 uint16_t getBatteryVoltage();
@@ -204,11 +209,17 @@ uint16_t getBatteryVoltage();
 #define TBS_BATT_SCALE2               TBS_BATT_SCALE
 #endif
 
+#define DEBUG_BAUDRATE                  115200
+#define LUA_DEFAULT_BAUDRATE            115200
+
+const etx_serial_port_t* auxSerialGetPort(int port_nr);
+
 // Power driver
 void pwrInit();
 void pwrOn();
 void pwrOff();
 bool pwrPressed();
+uint32_t pwrCheck();
 
 // Backlight driver
 #define BACKLIGHT_TIMEOUT_MIN           2
@@ -223,6 +234,7 @@ bool pwrPressed();
   uint8_t isBacklightEnabled(void);
 #endif
 void backlightEnable(uint8_t level);
+void backlightFullOn();
 #define BACKLIGHT_DISABLE()             backlightDisable()
 #define BACKLIGHT_ENABLE()              backlightEnable(g_eeGeneral.backlightBright)
 #define BACKLIGHT_LEVEL_MAX             100
@@ -245,11 +257,10 @@ enum PowerReason {
 
 constexpr uint32_t POWER_REASON_SIGNATURE = 0x0178746F;
 
-inline void SET_POWER_REASON(uint32_t value)
-{
-  RTC->BKP0R = value;
-  RTC->BKP1R = POWER_REASON_SIGNATURE;
-}
+// Defined in board.cpp — not inline because datacopy.inc is generated via
+// libclang which parses board.h without STM32 peripheral headers and would
+// fail on RTC->.
+void SET_POWER_REASON(uint32_t value);
 #endif
 
 #if defined(__cplusplus) && !defined(SIMU)
@@ -269,11 +280,15 @@ void bkregClrStatusFlag(uint32_t flag);
 
 // Common functions
 void lcdInit();
+void lcdOn();
 void lcdOff();
 bool isLcdOn();
 void lcdRefresh(bool wait=false);
 void lcdRefreshWait();
 void lcdSetRefVolt(uint8_t val);
+void lcdSetInvert(bool invert);
+// lcdSetContrast is implemented by gui/128x64/lcd.cpp (shared code).
+void lcdSetContrast(bool useDefault = false);
 void audioInit();
 void delaysInit();
 void timersInit();
@@ -283,6 +298,7 @@ void usbChargerInit();
 void ledInit();
 void hapticInit();
 void hapticOff();
+void hapticOn();
 void rtcInit();
 void sdInit();
 

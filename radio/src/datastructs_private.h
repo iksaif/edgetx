@@ -362,7 +362,7 @@ PACK(struct FrSkyLineData {
 });
 #endif
 
-#if defined(PCBTARANIS)
+#if defined(PCBTARANIS) || defined(PCBTANGO) || defined(PCBMAMBO)
 PACK(struct TelemetryScriptData {
   char    file[LEN_SCRIPT_FILENAME];
   int16_t inputs[MAX_TELEM_SCRIPT_INPUTS];
@@ -373,7 +373,7 @@ PACK(struct TelemetryScriptData {
 union TelemetryScreenData_u {
   FrSkyBarData  bars[4];
   FrSkyLineData lines[4];
-#if defined(PCBTARANIS)
+#if defined(PCBTARANIS) || defined(PCBTANGO) || defined(PCBMAMBO)
   TelemetryScriptData script;
 #endif
 };
@@ -385,7 +385,7 @@ PACK(struct TelemetryScreenData {
 union TelemetryScreenData {
   FrSkyBarData  bars[4];
   FrSkyLineData lines[4];
-#if defined(PCBTARANIS)
+#if defined(PCBTARANIS) || defined(PCBTANGO) || defined(PCBMAMBO)
   TelemetryScriptData script;
 #endif
 } FUNC(select_tele_screen_data);
@@ -629,7 +629,7 @@ static_assert(sizeof(potwarnen_t) * 8 >= MAX_POTS,
   #define TOPBAR_DATA
 #endif
 
-#if defined(PCBHORUS) || defined(PCBTARANIS) || defined(PCBPL18) || defined(PCBST16)
+#if defined(PCBHORUS) || defined(PCBTARANIS) || defined(PCBPL18) || defined(PCBST16) || defined(PCBTANGO) || defined(PCBMAMBO)
   #define SCRIPT_DATA \
     NOBACKUP(ScriptData scriptsData[MAX_SCRIPTS]);
 #else

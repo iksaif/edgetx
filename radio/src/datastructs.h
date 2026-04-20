@@ -99,7 +99,10 @@ static inline void check_struct()
 #elif defined(PCBX9D) || defined(PCBX9DP)
   CHKSIZE(ModelData, 6770);
 #elif defined(PCBTANGO) || defined(PCBMAMBO)
-  CHKSIZE(ModelData, 6161);
+  // 6161 was pre-SCRIPT_DATA; adding scriptsData[7] to the TBS PCB group
+  // (see datastructs_private.h) grew ModelData by 168 bytes → 6329, matching
+  // the X7/XLITE/X9LITE/T14/T12MAX baseline.
+  CHKSIZE(ModelData, 6329);
 #elif defined(PCBX7) || defined(PCBXLITE) || defined(PCBX9LITE) || defined(RADIO_T14) || defined(RADIO_T12MAX)
   CHKSIZE(ModelData, 6329);
 #elif defined(PCBPL18)

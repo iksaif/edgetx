@@ -82,6 +82,10 @@
  #else
   #include "yaml_datastructs_x9dp2019.cpp"
  #endif
+#elif defined(PCBTANGO) || defined(PCBMAMBO)
+ // TBS Tango II / Mambo — 128x64 (Mambo) or 128x96 (Tango) mono LCD, no
+ // complex switch/input layouts beyond the common 128x64 shape.
+ #include "yaml_datastructs_128x64.cpp"
 #else
 #error "Board not supported by YAML storage"
 #endif

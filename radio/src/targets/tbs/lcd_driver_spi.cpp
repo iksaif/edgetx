@@ -208,3 +208,9 @@ void lcdInit()
   delay_ms(150);
   LCD_RST_HIGH();
 }
+
+// TODO(port Phase B): issue the display controller's inverse-display command
+// (e.g. ST7565 / UC1701 0xA6/0xA7). Stubbed for Phase A link-only build.
+void lcdSetInvert(bool /*invert*/)
+{
+}

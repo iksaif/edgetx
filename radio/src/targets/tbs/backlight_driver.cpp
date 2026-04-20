@@ -18,7 +18,19 @@
  * GNU General Public License for more details.
  */
 
-#include "opentx.h"
+#include "stm32_hal_ll.h"
+#include "stm32_gpio.h"
+#include "stm32_timer.h"
+#include "hal/gpio.h"
+
+#include "board.h"
+
+// Called by gui/common/stdlcd/draw_functions.cpp when the UI wants to force
+// max backlight (e.g. during critical alerts). TODO(port Phase B): for
+// TANGO the "backlight" really controls LCD contrast via lcdSetRefVolt; for
+// MAMBO it's a PWM pin. Stubbed no-op for now.
+void backlightFullOn() {}
+
 #if defined(RADIO_TANGO)
 void backlightEnable(uint8_t level)
 {
@@ -32,41 +44,15 @@ void backlightEnable(uint8_t level)
   else
     value = (value << 5) / 21;              // value*128/84
 
-  lcdAdjustContrast(value);
+  lcdSetRefVolt(value);
   lcdOn();
 }
 #elif defined(RADIO_MAMBO)
-void backlightInit()
-{
-  GPIO_InitTypeDef GPIO_InitStructure;
-  GPIO_InitStructure.GPIO_Pin = BACKLIGHT_GPIO_PIN;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
-  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-  GPIO_InitStructure.GPIO_PuPd  = GPIO_PuPd_NOPULL;
-  GPIO_Init(BACKLIGHT_GPIO, &GPIO_InitStructure);
-  GPIO_PinAFConfig(BACKLIGHT_GPIO, BACKLIGHT_GPIO_PinSource, BACKLIGHT_GPIO_AF);
-  BACKLIGHT_TIMER->ARR = 100;
-  BACKLIGHT_TIMER->PSC = BACKLIGHT_TIMER_FREQ / 50000 - 1; // 20us * 100 = 2ms => 500Hz
-  BACKLIGHT_TIMER->CCMR2 = TIM_CCMR2_OC4M_1 | TIM_CCMR2_OC4M_2; // PWM
-  BACKLIGHT_TIMER->CCER = TIM_CCER_CC4E | TIM_CCER_CC2E;
-  BACKLIGHT_COUNTER_REGISTER = 0;
-  BACKLIGHT_TIMER->EGR = 0;
-  BACKLIGHT_TIMER->CR1 = TIM_CR1_CEN; // Counter enable
-}
-
-void backlightEnable(uint8_t level)
-{
-  BACKLIGHT_COUNTER_REGISTER = 100 - level;
-}
-
-void backlightDisable()
-{
-  BACKLIGHT_COUNTER_REGISTER = 0;
-}
-
-uint8_t isBacklightEnabled()
-{
-  return BACKLIGHT_COUNTER_REGISTER != 0;
-}
+// TODO(port): Mambo backlight PWM driver — still uses legacy StdPeriph API,
+// needs porting to stm32_gpio / stm32_timer once BACKLIGHT_* pin defines are
+// added to hal.h.
+void backlightInit() {}
+void backlightEnable(uint8_t) {}
+void backlightDisable() {}
+uint8_t isBacklightEnabled() { return 0; }
 #endif

@@ -20,6 +20,8 @@
     #define LCD_H                           64
   #endif
 
+  #define LCD_CONTRAST_MIN                0
+  #define LCD_CONTRAST_MAX                45
   #define LCD_CONTRAST_DEFAULT            25
   #define LCD_CONTRAST_OFFSET             130
 
@@ -32,22 +34,17 @@
 
   #define ADC_VREF_PREC2      330
 
-  // Keys
-  #define KEYS_GPIO_REG_MENU                GPIOD
-  #define KEYS_GPIO_PIN_MENU                LL_GPIO_PIN_13  // PD.13
-  #define KEYS_GPIO_REG_EXIT                GPIOD
-  #define KEYS_GPIO_PIN_EXIT                LL_GPIO_PIN_14  // PD.14
-  #define KEYS_GPIO_REG_PAGE                GPIOD
-  #define KEYS_GPIO_PIN_PAGE                LL_GPIO_PIN_12  // PD.12
-  #define KEYS_GPIO_REG_ENTER               GPIOD
-  #define KEYS_GPIO_PIN_ENTER               LL_GPIO_PIN_4   // PD.4
+  // Keys — gpio_t (GPIO_PIN(port, n)) form for modern stm32_gpio API.
+  #define KEYS_GPIO_PIN_MENU                GPIO_PIN(GPIOD, 13)
+  #define KEYS_GPIO_PIN_EXIT                GPIO_PIN(GPIOD, 14)
+  #define KEYS_GPIO_PIN_PAGE                GPIO_PIN(GPIOD, 12)
+  #define KEYS_GPIO_PIN_ENTER               GPIO_PIN(GPIOD, 4)
 
   // Rotary Encoder
   #define ROTARY_ENCODER_NAVIGATION
-  #define ENC_GPIO                          GPIOA
-  #define ENC_GPIO_PIN_A                    LL_GPIO_PIN_8    // PA.8
-  #define ENC_GPIO_PIN_B                    LL_GPIO_PIN_10   // PA.10
-  #define ROTARY_ENCODER_POSITION()         ((ENC_GPIO->IDR >> 9) & 0x02) + ((ENC_GPIO->IDR >> 8) & 0x01)
+  #define ENC_GPIO_PIN_A                    GPIO_PIN(GPIOA, 8)
+  #define ENC_GPIO_PIN_B                    GPIO_PIN(GPIOA, 10)
+  #define ROTARY_ENCODER_POSITION()         ((GPIOA->IDR >> 9) & 0x02) + ((GPIOA->IDR >> 8) & 0x01)
   #define ROTARY_ENCODER_EXTI_LINE1         LL_EXTI_LINE_8
   #define ROTARY_ENCODER_EXTI_IRQn1         EXTI9_5_IRQn
   #define ROTARY_ENCODER_EXTI_IRQHandler1   EXTI9_5_IRQHandler

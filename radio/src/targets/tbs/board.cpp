@@ -39,6 +39,26 @@ HardwareOptions hardwareOptions;
 
 #if !defined(BOOT)
 static uint32_t trampoline[TRAMPOLINE_INDEX_COUNT] = {0};
+
+// TODO(port): real ADC driver. Tango II/Mambo sample Hall-sensor gimbals
+// (+ battery, RTC battery, and Mambo pots) via ADC1/2. The legacy driver in
+// context_backup/porting_context/tbs-merge/radio/src/targets/tbs/ uses the
+// StdPeriph API; modern EdgeTX targets either provide a hand-rolled driver
+// here or declare the channels via HW_DESC_JSON and let generic_stm32/
+// analog_inputs.cpp generate one. For now, stub so boardInit() can link.
+static bool _tbs_adc_init() { return true; }
+static bool _tbs_adc_start_conversion() { return false; }
+static void _tbs_adc_wait_completion() {}
+const etx_hal_adc_driver_t _adc_driver = {
+  nullptr,                    // inputs
+  0,                          // default_pots_cfg
+  _tbs_adc_init,
+  nullptr,                    // deinit
+  _tbs_adc_start_conversion,
+  _tbs_adc_wait_completion,
+  nullptr,                    // set_input_mask
+  nullptr,                    // get_input_mask
+};
 #endif
 
 #include "stm32_timer.h"
@@ -114,8 +134,10 @@ void intmoduleSendBuffer(unsigned char const*, unsigned char)
 }
 #endif
 
-void checkBattery() {
-  // TODO: implement
+void SET_POWER_REASON(uint32_t value)
+{
+  RTC->BKP0R = value;
+  RTC->BKP1R = POWER_REASON_SIGNATURE;
 }
 
 uint32_t bkregGetStatusFlag(uint32_t flag) {
@@ -141,7 +163,9 @@ void runPwrOffCharging()
 
   while (1) {
     if (g_tmr10ms - tmrAdc >= 10) {
-      checkBattery();
+      // TODO(port Phase B): battery check during charging loop — was
+      // checkBattery() in the legacy code; the modern entry point is in
+      // edgetx.cpp and requires the main task to be running.
       tmrAdc = g_tmr10ms;
     }
 
@@ -279,10 +303,7 @@ uint16_t getBatteryVoltage()
 #endif
 }
 
-uint16_t anaIn(uint8_t index)
-{
-  return getAnalogValue(index);
-}
+// anaIn is provided by hal/adc_driver.cpp.
 
 void boardReboot2bootloader(uint32_t isNeedFlash, uint32_t HwId, uint32_t sn)
 {
@@ -290,7 +311,7 @@ void boardReboot2bootloader(uint32_t isNeedFlash, uint32_t HwId, uint32_t sn)
 #if !defined(BOOT)
   crossfirePowerOff();
   
-  if (crossfireTaskId) {
+  if (crossfireTaskId._rtos_handle) {
     xSemaphoreGive(get_task_sem(XF_TASK_SEM));
     vTaskDelay(pdMS_TO_TICKS(10));
   }
@@ -307,16 +328,32 @@ void loadDefaultRadioSettings()
 #endif
 }
 
-void onUSBConnectMenu(const char * result)
+// onUSBConnectMenu is provided by main.cpp.
+
+#if !defined(BOOT)
+// xSemaphoreTake / xSemaphoreGive are FreeRTOS macros, not functions, so their
+// addresses cannot be taken directly. The TBS CRSF blob (loaded at a fixed
+// address, see CROSSFIRE_TASK_ADDRESS in board.h) calls back into EdgeTX
+// through the trampoline[] table, so we expose real function pointers here.
+// This thin wrapper is the ABI contract with the blob — do not change without
+// updating the blob side. When the blob is replaced by native CRSF (Phase 5 in
+// PORTING-PLAN.md), this whole trampoline goes away.
+static BaseType_t tbs_trampoline_sem_take(SemaphoreHandle_t sem, TickType_t ticksToWait)
 {
-  // TODO
+  return xSemaphoreTake(sem, ticksToWait);
 }
+
+static BaseType_t tbs_trampoline_sem_give(SemaphoreHandle_t sem)
+{
+  return xSemaphoreGive(sem);
+}
+#endif
 
 void trampolineInit()
 {
 #if !defined(BOOT)
-  trampoline[RTOS_WAIT_SEM_TRAMPOILINE] = (uint32_t)(&xSemaphoreTake);
-  trampoline[RTOS_CLEAR_SEM_TRAMPOILINE] = (uint32_t)(&xSemaphoreGive);
+  trampoline[RTOS_WAIT_SEM_TRAMPOILINE] = (uint32_t)(&tbs_trampoline_sem_take);
+  trampoline[RTOS_CLEAR_SEM_TRAMPOILINE] = (uint32_t)(&tbs_trampoline_sem_give);
 #endif
 }
 

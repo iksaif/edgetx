@@ -122,7 +122,7 @@ enum MenuModelSetupItems {
   ITEM_MODEL_SETUP_CUSTOM_THROTTLE_WARNING,
   ITEM_MODEL_SETUP_CUSTOM_THROTTLE_WARNING_VALUE,
   ITEM_MODEL_SETUP_SWITCHES_WARNING1,
-#if defined(PCBTARANIS)
+#if defined(PCBTARANIS) || defined(PCBTANGO) || defined(PCBMAMBO)
   ITEM_MODEL_SETUP_SWITCHES_WARNING2,
   ITEM_MODEL_SETUP_SWITCHES_WARNING3,
   ITEM_MODEL_SETUP_POTS_WARNING,
@@ -225,7 +225,7 @@ enum MenuModelSetupItems {
 
 #endif
 
-#if defined(PCBTARANIS)
+#if defined(PCBTARANIS) || defined(PCBTANGO) || defined(PCBMAMBO)
   ITEM_MODEL_SETUP_TRAINER_LABEL,
   ITEM_MODEL_SETUP_TRAINER_MODE,
   #if defined(BLUETOOTH)
@@ -444,6 +444,10 @@ void onModelAntennaSwitchConfirm(const char * result)
 #elif defined(PCBXLITE)
   #define TRAINER_BLUETOOTH_ROW          (g_model.trainerData.mode == TRAINER_MODE_MASTER_BLUETOOTH ? TRAINER_BLUETOOTH_M_ROW : (g_model.trainerData.mode == TRAINER_MODE_SLAVE_BLUETOOTH ? TRAINER_BLUETOOTH_S_ROW : HIDDEN_ROW))
   #define TRAINER_ROWS                   IF_BT_TRAINER_ON(LABEL(Trainer)), IF_BT_TRAINER_ON(0), IF_BT_TRAINER_ON(TRAINER_BLUETOOTH_ROW), IF_BT_TRAINER_ON(TRAINER_CHANNELS_ROW), HIDDEN_ROW /* xlite has only BT trainer, so never PPM */
+#elif defined(PCBTANGO) || defined(PCBMAMBO)
+  // TBS Tango II / Mambo have no trainer port — render the row hidden so
+  // the surrounding trailing comma in the menu array stays valid C++.
+  #define TRAINER_ROWS                   HIDDEN_ROW
 #else
   #define TRAINER_ROWS
 #endif
@@ -804,7 +808,7 @@ void menuModelSetup(event_t event)
   int8_t old_editMode = s_editMode;
   bool CURSOR_ON_CELL = (menuHorizontalPosition >= 0);
 
-#if defined(PCBTARANIS)
+#if defined(PCBTARANIS) || defined(PCBTANGO) || defined(PCBMAMBO)
   int8_t old_posHorz = menuHorizontalPosition;
 #endif
 
@@ -1741,7 +1745,7 @@ void menuModelSetup(event_t event)
         break;
 #endif
 
-#if defined(PCBTARANIS)
+#if defined(PCBTARANIS) || defined(PCBTANGO) || defined(PCBMAMBO)
       case ITEM_MODEL_SETUP_TRAINER_LABEL:
         lcdDrawTextAlignedLeft(y, STR_TRAINER);
         break;
@@ -1811,7 +1815,7 @@ void menuModelSetup(event_t event)
         break;
 #endif
 
-#if defined(PCBTARANIS)
+#if defined(PCBTARANIS) || defined(PCBTANGO) || defined(PCBMAMBO)
       case ITEM_MODEL_SETUP_TRAINER_CHANNELS:
         lcdDrawTextIndented(y, STR_CHANNELRANGE);
         lcdDrawText(MODEL_SETUP_2ND_COLUMN, y, STR_CH, menuHorizontalPosition==0 ? attr : 0);
@@ -2065,7 +2069,7 @@ void menuModelSetup(event_t event)
               s_editMode = 0;
             }
 #endif
-#if defined(PCBTARANIS)
+#if defined(PCBTARANIS) || defined(PCBTANGO) || defined(PCBMAMBO)
             if (attr && l_posHorz > 0) {
               if (s_editMode > 0) {
                 if (l_posHorz == 1) {
