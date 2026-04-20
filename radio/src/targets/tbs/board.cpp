@@ -263,13 +263,13 @@ void boardOff()
 uint16_t getBatteryVoltage()
 {
   uint16_t instant_vbat = getAnalogValue(TX_VOLTAGE);
-  float batt_scale = BATT_SCALE;
+  float batt_scale = TBS_BATT_SCALE;
 
 #if defined(RADIO_TANGO)
   if (hardwareOptions.pcbrev == PCBREV_Tango2_V1)
-    batt_scale = BATT_SCALE;
-  else 
-    batt_scale = BATT_SCALE2;
+    batt_scale = TBS_BATT_SCALE;
+  else
+    batt_scale = TBS_BATT_SCALE2;
 #endif
 
 #if !defined(BOOT)
@@ -345,13 +345,19 @@ extern "C" void INTERRUPT_TIM13_IRQHandler()
 }
 
 // Bootloader stubs
+#if defined(BOOT)
+#include "bootloader/boot.h"
 void bootloaderInitScreen() {}
-void bootloaderDrawScreen(BootloaderState, int, char const*) {}
-void bootloaderDrawFilename(char const*, unsigned char, bool) {}
-int bootloaderGetMenuItemCount(int) { return 0; }
-void bootloaderRadioMenu(unsigned long, unsigned short) {}
-bool isFirmwareStart(unsigned char const*) { return true; }
-void flashWrite(unsigned long*, unsigned long const*) {}
+void bootloaderDrawScreen(BootloaderState, int, const char*) {}
+void bootloaderDrawFilename(const char*, uint8_t, bool) {}
+uint32_t bootloaderGetMenuItemCount(int) { return 0; }
+bool bootloaderRadioMenu(uint32_t, event_t) { return false; }
+bool isFirmwareStart(const uint8_t*) { return true; }
+void flashWrite(uint32_t*, const uint32_t*) {}
 void blExit() {}
-bool pwrOffPressed() { return false; }
+
+// Minimal stubs for generic bootloader (real drivers pulled in for firmware)
+void rotaryEncoderInit() {}
+int usbPlugged() { return 0; }
+#endif
 uint32_t rotaryEncoderGetValue() { return 0; }

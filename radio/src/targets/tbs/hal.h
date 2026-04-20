@@ -100,11 +100,11 @@
   #define INTMODULE_TIMER_Channel         LL_TIM_CHANNEL_CH1
   #define INTMODULE_TIMER_IRQn            TIM8_CC_IRQn
   #define INTMODULE_TIMER_IRQHandler      TIM8_CC_IRQHandler
-  #define INTMODULE_DMA                   DMA2
-  #define INTMODULE_DMA_STREAM            LL_DMA_STREAM_2
-  #define INTMODULE_DMA_CHANNEL           LL_DMA_CHANNEL_0
-  #define INTMODULE_DMA_STREAM_IRQn       DMA2_Stream2_IRQn
-  #define INTMODULE_DMA_IRQHandler        DMA2_Stream2_IRQHandler
+  #define INTMODULE_TIMER_DMA             DMA2
+  #define INTMODULE_TIMER_DMA_STREAM      LL_DMA_STREAM_2
+  #define INTMODULE_TIMER_DMA_CHANNEL     LL_DMA_CHANNEL_0
+  #define INTMODULE_TIMER_DMA_STREAM_IRQn DMA2_Stream2_IRQn
+  #define INTMODULE_TIMER_DMA_IRQHandler  DMA2_Stream2_IRQHandler
 
   // External Module
   #if defined(RADIO_TANGO)
@@ -146,7 +146,7 @@
     #define LCD_DMA_FLAG_INT                DMA_HIFCR_CTCIF7
     #define LCD_SPI                         SPI3
     #define LCD_GPIO_AF                     LL_GPIO_AF_6
-    #define LCD_SPI_PRESCALER               LL_SPI_BAUDRATEPRESCALER_DIV_2
+    #define LCD_SPI_PRESCALER               LL_SPI_BAUDRATEPRESCALER_DIV2
   #elif defined(RADIO_MAMBO)
     #define LCD_SPI_GPIO                    GPIOB
     #define LCD_MOSI_GPIO                   GPIO_PIN(GPIOB, 5)
@@ -162,7 +162,7 @@
     #define LCD_DMA_FLAG_INT                DMA_HIFCR_CTCIF7
     #define LCD_SPI                         SPI3
     #define LCD_GPIO_AF                     LL_GPIO_AF_6
-    #define LCD_SPI_PRESCALER               LL_SPI_BAUDRATEPRESCALER_DIV_2
+    #define LCD_SPI_PRESCALER               LL_SPI_BAUDRATEPRESCALER_DIV2
   #endif
 
   // SD
@@ -189,8 +189,7 @@
   #endif
 
   // Haptic
-  #define HAPTIC_GPIO                       GPIOB
-  #define HAPTIC_GPIO_PIN                   LL_GPIO_PIN_0  // PB.00
+  #define HAPTIC_GPIO                       GPIO_PIN(GPIOB, 0)  // PB.00
 
   // Timers
   #define MS_TIMER                          TIM14

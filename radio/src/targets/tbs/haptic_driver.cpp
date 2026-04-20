@@ -1,44 +1,32 @@
 /*
- * Copyright (C) OpenTX
+ * Copyright (C) EdgeTX
  *
  * Based on code named
- *   th9x - http://code.google.com/p/th9x 
+ *   opentx - https://github.com/opentx/opentx
+ *   th9x - http://code.google.com/p/th9x
  *   er9x - http://code.google.com/p/er9x
  *   gruvin9x - http://code.google.com/p/gruvin9x
  *
  * License GPLv2: http://www.gnu.org/licenses/gpl-2.0.html
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
  */
 
-#include "opentx.h"
+#include "hal/gpio.h"
+#include "stm32_gpio.h"
 
+#include "board.h"
+
+// No PWM on Tango II / Mambo — simple GPIO on/off
 void hapticInit()
 {
-  GPIO_InitTypeDef GPIO_InitStructure;
-  GPIO_InitStructure.GPIO_Pin = HAPTIC_GPIO_PIN;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
-  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
-  GPIO_Init(HAPTIC_GPIO, &GPIO_InitStructure);
+  gpio_init(HAPTIC_GPIO, GPIO_OUT, GPIO_PIN_SPEED_LOW);
 }
 
 void hapticOff()
 {
-  GPIO_ResetBits(HAPTIC_GPIO, HAPTIC_GPIO_PIN);
+  gpio_clear(HAPTIC_GPIO);
 }
 
 void hapticOn()
 {
-  GPIO_SetBits(HAPTIC_GPIO, HAPTIC_GPIO_PIN);
+  gpio_set(HAPTIC_GPIO);
 }
-
-

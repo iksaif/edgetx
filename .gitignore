@@ -24,3 +24,7 @@ _wasi_sdk_fetch
 
 # MkDocs
 /site/
+
+# local build / venv
+build/
+.venv/

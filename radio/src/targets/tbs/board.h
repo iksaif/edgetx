@@ -192,6 +192,18 @@ uint16_t getBatteryVoltage();
 
 #define BATT_CALIB_OFFSET             5
 
+// TBS-specific battery divider constants (legacy semantics):
+// vbat = adc / TBS_BATT_SCALE + calibration
+// Named with TBS_ prefix to avoid colliding with the modern
+// generic battery_voltage.cpp BATT_SCALE (integer, different formula).
+#if defined(RADIO_TANGO)
+#define TBS_BATT_SCALE                (4.446f)
+#define TBS_BATT_SCALE2               (4.162f)
+#elif defined(RADIO_MAMBO)
+#define TBS_BATT_SCALE                (4.55f)
+#define TBS_BATT_SCALE2               TBS_BATT_SCALE
+#endif
+
 // Power driver
 void pwrInit();
 void pwrOn();

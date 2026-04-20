@@ -97,6 +97,7 @@ set(BOOTLOADER_TARGET_SRC
   targets/common/arm/stm32/abnormal_reboot.cpp
   targets/tbs/${LCD_DRIVER}
   targets/tbs/board.cpp
+  targets/tbs/haptic_driver.cpp
 )
 
 add_library(board_bl OBJECT EXCLUDE_FROM_ALL
@@ -119,6 +120,14 @@ endif()
 
 add_library(board OBJECT EXCLUDE_FROM_ALL
   ${BOARD_SOURCES}
+)
+
+# TBS board.cpp directly includes FreeRTOS.h / task.h / semphr.h / queue.h
+# (legacy, unlike modern EdgeTX which wraps through os/*.h). Expose the
+# FreeRTOS kernel headers to the firmware board target.
+target_include_directories(board PRIVATE
+  ${RTOS_DIR}/include
+  ${RTOS_DIR}/portable/GCC/ARM_CM4F
 )
 
 set(FIRMWARE_SRC ${FIRMWARE_SRC} $<TARGET_OBJECTS:board>)
