@@ -50,9 +50,11 @@ include(Macros)
 git_id(GIT_STR)
 
 # Python check
+if(NOT DEFINED Python3_EXECUTABLE AND DEFINED ENV{PYTHON_EXECUTABLE})
+  set(Python3_EXECUTABLE $ENV{PYTHON_EXECUTABLE})
+endif()
 set(Python3_FIND_VIRTUALENV FIRST)
 set(Python3_FIND_STRATEGY LOCATION)
-
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
 if(Python3_Interpreter_FOUND)

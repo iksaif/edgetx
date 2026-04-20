@@ -39,9 +39,12 @@ if(NOT NATIVE_BUILD)
     ${STM32USB_DIR}/Class/HID/Inc
     ${STM32USB_DIR}/Class/MSC/Inc)
 
-  target_include_directories(board_bl PRIVATE
-    ${STM32USB_DIR}/Core/Inc
-    ${STM32USB_DIR}/Class/DFU/Inc)
+  if(TARGET board_bl)
+    target_include_directories(board_bl PRIVATE
+      ${STM32USB_DIR}/Core/Inc
+      ${STM32USB_DIR}/Class/DFU/Inc
+      ${CMAKE_CURRENT_BINARY_DIR})
+  endif()
 
   set(FIRMWARE_SRC ${FIRMWARE_SRC} $<TARGET_OBJECTS:stm32usb>)
   set(BOOTLOADER_SRC ${BOOTLOADER_SRC} $<TARGET_OBJECTS:stm32usb>)

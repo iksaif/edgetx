@@ -237,6 +237,10 @@ static uint16_t _scratch_byte __DMA_NO_CACHE;
 static uint8_t _scratch_buffer[512] __DMA_NO_CACHE;
 
 #if defined(STM32F4)
+#if !defined(CCMDATARAM_BASE)
+#define CCMDATARAM_BASE 0xFFFFFFFF
+#endif
+
 #define _IS_DMA_BUFFER(addr) \
   (((intptr_t)(addr) & 0xF0000000) != CCMDATARAM_BASE)
 #else

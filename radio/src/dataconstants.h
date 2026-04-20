@@ -73,7 +73,7 @@
   #define DEF_TRAINER_CHANNELS         8
   #define MAX_TRAINER_CHANNELS         16
   #define MAX_TELEMETRY_SENSORS        60
-#elif defined(PCBTARANIS)
+#elif defined(PCBTARANIS) || defined(PCBTANGO) || defined(PCBMAMBO)
   #define MAX_MODELS                   60
   #define MAX_OUTPUT_CHANNELS          32 // number of real output channels CH1-CH32
   #define MAX_FLIGHT_MODES             9
