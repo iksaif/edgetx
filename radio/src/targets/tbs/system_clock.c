@@ -12,14 +12,35 @@
 #include "stm32f4xx_ll_system.h"
 #include "stm32f4xx_ll_bus.h"
 
-// TBS has 8MHz HSE. 
-// For 168MHz SYSCLK:
-// SYSCLK = (HSE / M) * N / P
-// 168 = (8 / 4) * 168 / 2
-#define PLL_M LL_RCC_PLLM_DIV_4
-#define PLL_N 168
-#define PLL_Q LL_RCC_PLLQ_DIV_7
-// #define PLL_P LL_RCC_PLLP_DIV_2
+// TBS has 8 MHz HSE.
+// For 168 MHz SYSCLK:
+//   SYSCLK = (HSE / M) * N / P
+//   168 = (8 / 4) * 168 / 2
+//
+// ⚠️ OVERCLOCK ON TANGO (STM32F413xG) — see datasheet DS11581:
+//   F413 spec max HCLK = 100 MHz (CMSIS header RCC_MAX_FREQUENCY = 100 MHz,
+//   scale-1 regulator). Running at 168 MHz exceeds every rated spec
+//   (flash latency, regulator, PLL output). The legacy TBS firmware has
+//   been shipping this config for years and the CRSF blob at
+//   CROSSFIRE_TASK_ADDRESS was compiled assuming 168 MHz for CRSFShot
+//   timing — dropping to spec-compliant 100 MHz will de-sync the blob.
+//   MAMBO (STM32F407, max 168 MHz) is in spec at this setting.
+//
+//   DO NOT drop PLL_N to 100 without also re-timing the blob (Phase D
+//   work, blob replacement). If you need a known-safe clock for a
+//   dev-board without the blob, define TBS_SAFE_CLOCK at build time.
+#if defined(TBS_SAFE_CLOCK)
+// Spec-compliant 100 MHz for F413 dev/bringup without the blob. 3WS flash.
+#define PLL_M   LL_RCC_PLLM_DIV_4
+#define PLL_N   100
+#define PLL_Q   LL_RCC_PLLQ_DIV_5   // 48 MHz USB: (8/4)*100/(4.something)...
+#define SYSTEM_CLOCK_FLASH_LATENCY  LL_FLASH_LATENCY_3
+#else
+#define PLL_M   LL_RCC_PLLM_DIV_4
+#define PLL_N   168
+#define PLL_Q   LL_RCC_PLLQ_DIV_7
+#define SYSTEM_CLOCK_FLASH_LATENCY  LL_FLASH_LATENCY_5
+#endif
 
 /**
   * @brief  System Clock Configuration for TBS (8MHz HSE)
@@ -45,8 +66,9 @@ void SystemClock_Config(void)
   while (LL_RCC_HSE_IsReady() != 1) {
   }
 
-  /* Set FLASH latency */
-  LL_FLASH_SetLatency(LL_FLASH_LATENCY_5);
+  /* Set FLASH latency — 5WS for 168 MHz (default), 3WS for the
+     TBS_SAFE_CLOCK 100 MHz build. */
+  LL_FLASH_SetLatency(SYSTEM_CLOCK_FLASH_LATENCY);
 
   /* Setup pre-fetch + caches */
   LL_FLASH_EnablePrefetch();

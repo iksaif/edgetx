@@ -5,6 +5,8 @@
  *   opentx - https://github.com/opentx/opentx
  */
 
+#include <string.h>
+
 #include "stm32_hal_ll.h"
 #include "stm32_gpio.h"
 
@@ -195,7 +197,15 @@ void boardInit()
 
 #if defined(RADIO_MAMBO)
   backlightInit();
+#if !defined(BOOT)
+  // BACKLIGHT_ENABLE expands to backlightEnable(g_eeGeneral.backlightBright),
+  // and g_eeGeneral doesn't exist in the bootloader build. Call the raw
+  // max-brightness path instead so the bootloader's splash screen is
+  // readable.
   BACKLIGHT_ENABLE();
+#else
+  backlightEnable(BACKLIGHT_LEVEL_MAX);
+#endif
 #endif
   lcdInit(); 
   audioInit();
@@ -246,8 +256,9 @@ void boardInit()
 
 void boardOff()
 {
-#if defined(AUDIO_MUTE_GPIO_PIN)
-  gpio_set(AUDIO_MUTE_GPIO_PIN);
+#if defined(AUDIO_MUTE_GPIO)
+  // Mute the amplifier before cutting power so we don't pop the speaker.
+  gpio_set(AUDIO_MUTE_GPIO);
 #endif
 
 #if !defined(BOOT)
@@ -341,19 +352,54 @@ void trampolineInit()
 #endif
 }
 
-extern "C" void EXTI15_10_IRQHandler()
+#if !defined(BOOT)
+// Called once from crossfireTasksStart() BEFORE the blob is spawned.
+// Must:
+//   (1) zero the entire CrossfireSharedData struct (SRAM at
+//       SHARED_MEMORY_ADDRESS = 0x10000000 holds garbage at reset);
+//   (2) publish the local trampoline[] array so the blob can call
+//       xSemaphoreTake/Give/etc. through it;
+//   (3) populate rtosApiVersion so the blob refuses to run if the ABI
+//       moved.
+// io/crsf/crossfire.cpp's crsfInit() does this in the blob-inclusive
+// build; until Phase C.3 lands it here, we provide our own initialiser.
+void tbsCrsfSharedDataInit()
+{
+  memset(&crossfireSharedData, 0, sizeof(CrossfireSharedData));
+
+  trampolineInit();
+  crossfireSharedData.trampoline = trampoline;
+  crossfireSharedData.rtosApiVersion = RTOS_API_VERSION;
+}
+#endif
+
+// Telemetry EXTI wake-up — INTERRUPT_EXTI_LINE = LL_EXTI_LINE_9 (hal.h),
+// which is handled by EXTI9_5_IRQHandler on the F4 vector table, NOT
+// EXTI15_10. The previous function name silently did nothing. Once the
+// rotary encoder driver is enabled it uses USE_EXTI9_5_IRQ to register
+// itself through stm32_exti_driver, so we must NOT hard-define the
+// vector here — go through stm32_exti_enable() in the telemetry init
+// path (telemetry_driver.cpp, Phase B). This function intentionally
+// removed; keeping a #if 0 reference for PORT history.
+#if 0  // TODO(port Phase B): wire telemetry EXTI via stm32_exti_enable()
+static void telemetry_exti_isr()
 {
 #if !defined(BOOT)
-  if (LL_EXTI_IsActiveFlag_0_31(INTERRUPT_EXTI_LINE)) {
-    LL_EXTI_ClearFlag_0_31(INTERRUPT_EXTI_LINE);
-    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-    xSemaphoreGiveFromISR(get_task_sem(XF_TASK_SEM), &xHigherPriorityTaskWoken);
-    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-  }
+  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+  xSemaphoreGiveFromISR(get_task_sem(XF_TASK_SEM), &xHigherPriorityTaskWoken);
+  portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 #endif
 }
+#endif
 
-extern "C" void INTERRUPT_TIM13_IRQHandler()
+// TIM13 shares the NVIC slot TIM8_UP_TIM13_IRQn on STM32F4 — the vector
+// table in targets/common/arm/stm32/f4/vectors_stm32f407xx.c assigns it
+// to TIM8_UP_TIM13_IRQHandler (weak default). The TBS-specific
+// INTERRUPT_TIM13_IRQHandler symbol in previous revisions was never
+// installed in the table, so TIM13 fires silently hit the weak stub.
+// Map hal.h's INTERRUPT_NOT_IRQHandler macro (= TIM8_UP_TIM13_IRQHandler)
+// to our actual handler.
+extern "C" void INTERRUPT_NOT_IRQHandler()
 {
 #if !defined(BOOT)
   if (LL_TIM_IsActiveFlag_UPDATE(INTERRUPT_NOT_TIMER)) {

@@ -70,6 +70,12 @@ void crossfireTasksStart()
     return;
   }
 
+  // ORDER MATTERS: zero the shared region, publish trampoline + rtosApiVersion
+  // BEFORE creating the semaphores and BEFORE the blob task starts running.
+  // If the blob sees stale CCM contents it will de-reference garbage pointers
+  // and hard-fault almost immediately.
+  tbsCrsfSharedDataInit();
+
   crossfireTasksCreate();
 
   SemaphoreHandle_t taskSem[TASK_SEM_COUNT] = {0};

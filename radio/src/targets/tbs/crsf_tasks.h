@@ -37,6 +37,11 @@ extern StackType_t   crossfireStack[CROSSFIRE_STACK_SIZE];
 extern task_handle_t systemTaskId;
 extern StackType_t   systemStack[SYSTEM_STACK_SIZE];
 
+// Zero crossfireSharedData, publish trampoline[] and rtosApiVersion.
+// Must run before the blob task is created. Defined in board.cpp because
+// the trampoline[] array lives there.
+void tbsCrsfSharedDataInit();
+
 void crossfireTasksCreate();
 void crossfireTasksStart();
 void crossfireTasksStop();

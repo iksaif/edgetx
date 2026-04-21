@@ -40,6 +40,17 @@
   #define KEYS_GPIO_PIN_PAGE                GPIO_PIN(GPIOD, 12)
   #define KEYS_GPIO_PIN_ENTER               GPIO_PIN(GPIOD, 4)
 
+  // stm32_exti_driver.cpp gates its EXTIx_y_IRQHandler code behind these
+  // USE_* defines. Without them, stm32_exti_enable(LINE, ...) silently
+  // fails to install a handler and NVIC enable — nothing fires. PA.8 = line
+  // 8 → EXTI9_5 IRQ; PA.10 = line 10 → EXTI15_10 IRQ. The _Priority
+  // constants are pasted into NVIC_SetPriority by the _SET_EXTI_IRQ_HANDLER
+  // macro, so they must exist.
+  #define USE_EXTI9_5_IRQ
+  #define EXTI9_5_IRQ_Priority     5
+  #define USE_EXTI15_10_IRQ
+  #define EXTI15_10_IRQ_Priority   5
+
   // Rotary Encoder
   // The modern targets/common/arm/stm32/rotary_encoder_driver.cpp uses two
   // naming conventions at the same time:

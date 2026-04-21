@@ -5,7 +5,9 @@ option(INTERNAL_MODULE_CRSF "Support for crossfire internal module" ON)
 
 set(CPU_TYPE STM32F4)
 set(CPU_TYPE_FULL STM32F407xE)
-set(LINKER_SCRIPT targets/tbs/stm32f4_flash.ld)
+# The firmware is linked with boards/generic_stm32/linker/firmware.ld +
+# the per-chip layout.ld under boards/generic_stm32/linker/${TARGET_LINKER_DIR}/
+# (stm32f413/ for TANGO, stm32f40x/ for MAMBO). No target-specific .ld.
 # RTC_BACKUP_RAM uses the 4KB BKPSRAM peripheral (available on F407/F417 but
 # NOT on F413 — Tango II is F413). The TBS code uses RTC backup registers
 # (RTC->BKP0R/BKP1R) instead, which is a different mechanism. Leave the 4KB
@@ -30,9 +32,14 @@ elseif(PCB STREQUAL MAMBO)
   set(FLAVOUR mambo)
   set(LCD_DEPTH 1)
   set(CPU_TYPE_FULL STM32F407xE)
-  set(TARGET_LINKER_DIR stm32f40x)
+  # stm32f40x_tbs reserves the first 1 KB of CCM for the CrossfireSharedData
+  # ABI at 0x10000000. The plain stm32f40x dir puts .data/.bss at that
+  # address, which silently corrupts the blob's view of the struct.
+  set(TARGET_LINKER_DIR stm32f40x_tbs)
   set(TARGET_FLASH_SIZE 1M)
-  add_definitions(-DHARDWARE_TRIMS)
+  # HARDWARE_TRIMS was defined by the legacy tbs-merge code but has no
+  # consumers in modern EdgeTX — trims on MAMBO are sampled via the generic
+  # switch driver from hw_defs/mambo.json. Intentionally not defined.
   add_definitions(-DRADIO_MAMBO)
   add_definitions(-DSTM32F40_41xxx -DSTM32F407xx -DPCBMAMBO)
 endif()

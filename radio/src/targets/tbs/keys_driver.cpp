@@ -39,15 +39,18 @@ uint32_t readKeys()
 
 uint32_t readTrims()
 {
-  // TODO(port Phase B): TANGO trim events come through per10ms() → g_trimState
-  // in the legacy code. Wire to the modern key driver once the TANGO trim
-  // matrix is mapped. MAMBO trims are sampled via ADC and handled by the
-  // generic switch driver.
 #if defined(RADIO_TANGO)
+  // TANGO trim events are latched into g_trimState by per10ms() in the
+  // legacy code. We preserve the "consume on read" semantics so the
+  // generic key driver sees each event exactly once. g_trimState is
+  // still nobody's-writing until the per10ms TANGO trim matrix is
+  // actually sampled (Phase B.8 TODO).
   uint32_t result = g_trimState;
   g_trimState = 0;
   return result;
 #else
+  // MAMBO has no digital trim keys — trims are ADC channels sampled
+  // through the generic switch / analog driver. 0 is the correct sentinel.
   return 0;
 #endif
 }

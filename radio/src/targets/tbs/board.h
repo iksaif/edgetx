@@ -20,8 +20,10 @@
 void rotaryEncoderInit();
 void rotaryEncoderCheck();
 #endif
+// The common rotary_encoder_driver.cpp checks ROTARY_ENCODER_INVERTED
+// (with -ED, matches all other targets). Previous spelling was a no-op.
 #if defined(RADIO_MAMBO)
-#define ROTARY_ENCODER_INVERT
+#define ROTARY_ENCODER_INVERTED
 #endif
 
 // TBS Tango II / Mambo have no trainer port — SLAVE_MODE always false.
@@ -33,9 +35,19 @@ void rotaryEncoderCheck();
 #define MY_DEVICE_NAME                  "Mambo"
 #endif
 
+// F413 has 1 MB flash total. We partition it:
+//   [0x08000000 .. +BOOTLOADER_SIZE)   bootloader  (32 KB)
+//   [+BOOTLOADER_SIZE .. CROSSFIRE_TASK_ADDRESS)  firmware  (~736 KB usable)
+//   [0x080C0020 .. 0x08100000)          CRSF blob region (~256 KB)
+// FLASHSIZE is the usable region the bootloader writes to (stops before
+// stepping on the blob sector). BOOTLOADER_SIZE must match the
+// BOOTLOADER_SIZE value in
+// boards/generic_stm32/linker/stm32f413/layout.ld (currently 0x8000);
+// otherwise bootloader boot.cpp's jumpTo(APP_START_ADDRESS) lands 16 KB
+// past the real .isr_vector and the firmware won't start.
 #define FLASHSIZE                       0xC0000
 #define FLASH_PAGESIZE                  256
-#define BOOTLOADER_SIZE                 0xC000
+#define BOOTLOADER_SIZE                 0x8000
 #define FIRMWARE_ADDRESS                0x08000000
 #define APP_START_ADDRESS               (uint32_t)(FIRMWARE_ADDRESS + BOOTLOADER_SIZE)
 #define CROSSFIRE_TASK_ADDRESS          0x080C0020
@@ -266,7 +278,10 @@ void SET_POWER_REASON(uint32_t value);
 #if defined(__cplusplus) && !defined(SIMU)
 extern "C" {
 #endif
-void INTERRUPT_TIM13_IRQHandler();
+// INTERRUPT_NOT_IRQHandler is the TBS-specific name for the TIM13 update
+// ISR; hal.h aliases it to TIM8_UP_TIM13_IRQHandler so it lines up with
+// the F4 vector table slot. Implementation lives in board.cpp.
+void INTERRUPT_NOT_IRQHandler();
 
 uint32_t bkregGetStatusFlag(uint32_t flag);
 void bkregSetStatusFlag(uint32_t flag);
