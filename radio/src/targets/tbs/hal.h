@@ -120,9 +120,46 @@
     #define TELEMETRY_DMA_IRQ_PRIORITY      5
   #endif
 
-  // Internal Module (mapped to Crossfire for TBS)
+  // Internal Module — CRSF on PC.6 / PC.7 via USART6.
+  //
+  // TBS radios have two ways to drive this UART:
+  //   (a) Proprietary CRSF co-processor blob at CROSSFIRE_TASK_ADDRESS
+  //       which owns USART6 itself and talks to EdgeTX through
+  //       CrossfireSharedData. boards/generic_stm32/module_ports.cpp is
+  //       given a softserial / pulse-driver view (INTMODULE_TIMER=TIM8
+  //       on PC.6 CH1) — the blob reconfigures the pin to USART6 alt
+  //       function after boot.
+  //   (b) Native CRSF (Phase D): EdgeTX's own io/crsf/ stack drives
+  //       USART6 directly through INTMODULE_USART, no blob.
+  //
+  // Paths (a) and (b) both claim PC.6; they can't coexist. `TBS_NATIVE_CRSF`
+  // flips between them. Default = (a) to match shipping behaviour.
   #define INTMODULE_TX_GPIO               GPIO_PIN(GPIOC, 6)
-  #define INTMODULE_TX_GPIO_AF            LL_GPIO_AF_8
+  #define INTMODULE_RX_GPIO               GPIO_PIN(GPIOC, 7)
+  #define INTMODULE_TX_GPIO_AF            LL_GPIO_AF_8    // USART6 and TIM8 both use AF8 on PC.6
+
+#if defined(TBS_NATIVE_CRSF)
+  // Native CRSF USART6 @ 420 kbaud half-duplex. DMA2 Stream6 ch5 = USART6_TX,
+  // DMA2 Stream1 ch5 = USART6_RX. Phase D scaffolding — needs the rest of
+  // io/crsf/ port and Phase D blob removal (drop CROSSFIRE_TASK_ADDRESS
+  // etc.). Leaving commented out until Phase D lands:
+  #error "TBS_NATIVE_CRSF scaffolding — Phase D work, not yet functional."
+  // #define INTMODULE_USART                 USART6
+  // #define INTMODULE_USART_IRQn            USART6_IRQn
+  // #define INTMODULE_USART_IRQHandler      USART6_IRQHandler
+  // #define INTMODULE_DMA                   DMA2
+  // #define INTMODULE_DMA_STREAM            LL_DMA_STREAM_6
+  // #define INTMODULE_DMA_STREAM_IRQ        DMA2_Stream6_IRQn
+  // #define INTMODULE_DMA_STREAM_IRQHandler DMA2_Stream6_IRQHandler
+  // #define INTMODULE_DMA_CHANNEL           LL_DMA_CHANNEL_5
+  // #define INTMODULE_RX_DMA                DMA2
+  // #define INTMODULE_RX_DMA_STREAM         LL_DMA_STREAM_1
+  // #define INTMODULE_RX_DMA_CHANNEL        LL_DMA_CHANNEL_5
+#else
+  // Blob path (default). module_ports.cpp's softserial init on TIM8/PC.6
+  // is redundant work — the blob overrides the pin config at startup —
+  // but harmless. Keep these defines so HARDWARE_INTERNAL_MODULE has
+  // something to point module_ports.cpp at.
   #define INTMODULE_TIMER                 TIM8
   #define INTMODULE_TIMER_FREQ            (PERI2_FREQUENCY * TIMER_MULT_APB2)
   #define INTMODULE_TIMER_Channel         LL_TIM_CHANNEL_CH1
@@ -133,6 +170,7 @@
   #define INTMODULE_TIMER_DMA_CHANNEL     LL_DMA_CHANNEL_0
   #define INTMODULE_TIMER_DMA_STREAM_IRQn DMA2_Stream2_IRQn
   #define INTMODULE_TIMER_DMA_IRQHandler  DMA2_Stream2_IRQHandler
+#endif
 
   // External Module
   #if defined(RADIO_TANGO)

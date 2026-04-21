@@ -15,9 +15,23 @@ and `freedomtx/` (TBS's official OpenTX 2.3 fork).
 - ✅ Toolchain: ARM GNU 15.2.rel1 + newlib, Python venv with Pillow/lz4/pydantic/jinja2/clang
 - ✅ Submodules: FreeRTOS, lvgl, stb, uf2
 - ✅ `cmake -DPCB=TANGO` configures
-- ✅ Bootloader: `bootloader.elf` links (~655 KB)
-- ✅ Firmware: **`firmware.elf` links** (~438 KB .text, fits 1 MB F413 comfortably)
-- ⏳ Real hardware bring-up, internal CRSF, companion/sim, release
+- ✅ Bootloader: `bootloader.elf` links (~27 KB .bin)
+- ✅ Firmware: **`firmware.elf` links** (~440 KB .text, fits 1 MB F413 comfortably)
+- ✅ Real drivers wired: power (B.1), rotary encoder (B.2), ADC for VBAT (B.3),
+  audio DAC (B.4), memory-layout fixes + flashing runbook (B.6), 10 review
+  findings fixed (B.7)
+- ✅ Phase C.3: io/crsf/ protocol layer compiled in, stubs replaced with
+  real `crossfire_glue.cpp`, backup registers use RTC BKPxR (fixed the
+  SET_POWER_REASON / bkregSetStatusFlag collision bug on BKP0R)
+- ✅ Phase D scaffolding: `TBS_NATIVE_CRSF` CMake flag with the native
+  USART6 INTMODULE config commented but ready; `#error`s on purpose
+  until D lands
+- ⏳ B.5 (flash to device) — blocked on hardware
+- ⏳ B.8 — `mambo.json` missing `keys` field; MAMBO build fails at hw-def
+  generator
+- ⏳ C.1/C.2 — obtain + reverse the TBS CRSF blob
+- ⏳ Phase D — native CRSF migration; detailed delta below
+- ⏳ Phase E — companion / simulator / release builds
 
 ### Build helper
 `tools/build-tango.sh` wraps venv activation, PATH setup, cmake re-config,
@@ -206,15 +220,61 @@ internal module.
 
 ## Phase D — Native CRSF migration (deferred, tracked for later)
 
-Once the blob is understood (C.2), we can replace it with EdgeTX's native
-`io/crsf/` stack:
-- Remove `CROSSFIRE_TASK_ADDRESS` / `SHARED_MEMORY_ADDRESS` indirection.
-- Drop `trampoline[]` and the `tbs_trampoline_sem_take/give` wrappers in
-  `board.cpp`.
-- Drop `crsf_tasks.{cpp,h}`.
-- Reclaim the flash region `0x080C0020` for firmware or storage.
-- Internal module becomes a regular USART-driven CRSF port just like on
-  any other modern EdgeTX target.
+Once the blob is understood (C.2), replace it with EdgeTX's native
+`io/crsf/` stack. Concrete delta, based on what we've learned through
+Phase C.3:
+
+**D.1 — Enable and stabilise the TBS_NATIVE_CRSF flag.**
+  A `TBS_NATIVE_CRSF` CMake option already exists. It currently `#error`s
+  on purpose so nobody ships a half-baked native build. To get it to
+  link: finish the INTMODULE_USART stanza in hal.h (DMA channel + stream
+  values are correct per the F413 reference manual — they're just
+  commented out). USART6 TX = DMA2 Stream6 Ch5; USART6 RX = DMA2
+  Stream1 Ch5. No other conflicts on F413 DMA2.
+
+**D.2 — Mutually exclusive with the blob path.**
+  module_ports.cpp picks exactly one of the `INTMODULE_USART` or the
+  softserial `INTMODULE_TIMER_*` branch. Don't define both. The current
+  hal.h puts them in an `#if defined(TBS_NATIVE_CRSF) … #else …` already.
+
+**D.3 — Rip out the trampoline on the native path.**
+  Guard with `#if !defined(TBS_NATIVE_CRSF)` or delete in this order:
+  - `crsf_tasks.cpp` / `.h` (blob task + taskSem publishing)
+  - `tbsCrsfSharedDataInit()` in `board.cpp` (zeros + publishes
+    trampoline)
+  - `trampoline[]` in `board.cpp`
+  - `tbs_trampoline_sem_{take,give}` helpers
+  - `CROSSFIRE_TASK_ADDRESS` / `SHARED_MEMORY_ADDRESS` from `board.h`
+  - The `CrossfireSharedData` global aliasing in `io/crsf/crossfire.h`
+    (`#define crossfireSharedData ((CrossfireSharedData_t*)0x10000000)`)
+
+**D.4 — Replace crossfire_glue.cpp with stock io/crsf/crossfire.cpp.**
+  The proper port that earlier attempts at C.3 stumbled on: StdPeriph RCC
+  → LL, BKPSRAM → RTC BKPxR (we already did this in C.3 for the stub
+  paths), LIBCRSF_CMD_FRAME / LIBCRSF_RC_RX_CMD enums need to be added
+  back to `io/crsf/crsf.h`, event-loop integration to the modern
+  `getEvent()` signature, and STR_* translations restored. Maybe 300-500
+  LOC of mechanical work.
+
+**D.5 — Reclaim `0x080C0020..0x08100000`.**
+  Remove the `CROSSFIRE_TASK_ADDRESS` reserve check from
+  `crossfireTasksCreate`. Update `FLASHSIZE` in `board.h` and the
+  firmware.ld flash region to use the full 1 MB minus bootloader. The
+  bootloader's `bin_fw_files.cpp` write-limit will automatically extend
+  to the new `FLASHSIZE - BOOTLOADER_SIZE` ceiling.
+
+**D.6 — Drop the F413 168 MHz overclock.**
+  The blob assumes 168 MHz for CRSFShot timing — without the blob we're
+  free to run in spec. Define `TBS_SAFE_CLOCK` to target the
+  F413-datasheet-compliant 100 MHz / 3WS config in `system_clock.c`.
+  Recheck SPI/LCD/SD baud dividers in hal.h since `PERI1_FREQUENCY` /
+  `PERI2_FREQUENCY` change (50 MHz / 100 MHz at safe clock).
+
+**D.7 — Extract blob first, reverse it, validate parity.**
+  Before shipping D, build a test matrix against the blob to confirm
+  that native EdgeTX CRSF produces byte-compatible frames at the same
+  cadence. CRSFShot timing is the risk surface: blob → RF must accept
+  our output without the extra timing compensation TBS added.
 
 ---
 

@@ -2,6 +2,16 @@
 
 option(DISK_CACHE "Enable SD card disk cache" OFF)
 option(INTERNAL_MODULE_CRSF "Support for crossfire internal module" ON)
+# Phase D scaffolding: build firmware that drives USART6 directly (drops the
+# proprietary TBS CRSF blob). Non-functional until the rest of Phase D lands;
+# setting this today will fail the build on purpose so nobody ships a dev
+# build thinking it works.
+option(TBS_NATIVE_CRSF
+  "Use EdgeTX native io/crsf/ stack instead of the TBS co-processor blob (Phase D, NOT YET FUNCTIONAL)"
+  OFF)
+if(TBS_NATIVE_CRSF)
+  add_definitions(-DTBS_NATIVE_CRSF)
+endif()
 
 set(CPU_TYPE STM32F4)
 set(CPU_TYPE_FULL STM32F407xE)
