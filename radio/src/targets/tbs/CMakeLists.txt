@@ -101,7 +101,9 @@ set(BOARD_COMMON_SRC
   targets/tbs/board.cpp
   targets/tbs/haptic_driver.cpp
   targets/tbs/${LCD_DRIVER}
-  targets/common/arm/stm32/pwr_driver.cpp
+  # TBS-specific pwr_driver (active-high power switch — the common
+  # targets/common/arm/stm32/pwr_driver.cpp assumes active-low).
+  targets/tbs/pwr_driver.cpp
   targets/common/arm/stm32/delays_driver.cpp
   targets/common/arm/stm32/abnormal_reboot.cpp
 )
@@ -126,6 +128,8 @@ set(FIRMWARE_BOARD_EXTRA_SRC
   targets/common/arm/stm32/stm32_switch_driver.cpp
   targets/common/arm/stm32/module_timer_driver.cpp
   targets/common/arm/stm32/heartbeat_driver.cpp
+  targets/common/arm/stm32/rotary_encoder_driver.cpp
+  targets/common/arm/stm32/audio_dac_driver.cpp
   # mixer_scheduler_driver.cpp needs MIXER_SCHEDULER_TIMER in hal.h — Tango's
   # free timers need mapping (Phase B). The CRSF blob publishes mixer_schedule
   # via crossfireSharedData anyway. Stubbed in tbs_stubs.cpp for now.

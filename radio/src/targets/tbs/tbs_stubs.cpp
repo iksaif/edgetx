@@ -100,7 +100,8 @@ void mixerSchedulerEnableTrigger() {}
 void mixerSchedulerDisableTrigger() {}
 void mixerSchedulerResetTimer() {}
 // mixerSchedulerISRTrigger() is defined in mixer_scheduler.cpp.
-void rotaryEncoderInit() {}
+// rotaryEncoderInit / rotaryEncoderGetValue come from the common
+// targets/common/arm/stm32/rotary_encoder_driver.cpp now.
 
 struct gtm;
 void rtcSetTime(const gtm* /*t*/) {}
@@ -114,19 +115,8 @@ void rtcInit() {}
 // menuModelExpoOne is only defined when the target enables a specific
 // layout. Provide an extern stub alias in case we need it.
 
-// ----------------------------------------------------------------------------
-// Audio DAC
-//
-// TODO(port Phase B): real DAC driver on Tango II hardware (DAC1 channel
-// driven from TIM6 + DMA1_Stream5). hal.h is missing AUDIO_DMA /
-// AUDIO_DMA_Stream / AUDIO_TIMER / AUDIO_OUTPUT_GPIO. Once those are added
-// we can pull targets/common/arm/stm32/audio_dac_driver.cpp back into
-// FIRMWARE_SRC.
-// ----------------------------------------------------------------------------
-void audioInit() {}
-void audioMute() {}
-void audioUnmute() {}
-void audioConsumeCurrentBuffer() {}
+// Audio DAC: real driver is targets/common/arm/stm32/audio_dac_driver.cpp,
+// now wired into FIRMWARE_BOARD_EXTRA_SRC with AUDIO_* hal.h defines.
 
 // auxSerialGetPort is provided by boards/generic_stm32/aux_ports.cpp, which
 // reads the port definitions generated from hw_defs/tango.json.

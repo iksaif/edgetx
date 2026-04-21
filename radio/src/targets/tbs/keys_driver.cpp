@@ -17,10 +17,6 @@
 #include "board.h"
 #include "debug.h"
 
-#if defined(ROTARY_ENCODER_NAVIGATION)
-uint32_t rotencPositionValue;
-#endif
-
 #if defined(RADIO_TANGO)
 uint8_t g_trimState = 0;
 #endif
@@ -63,9 +59,7 @@ void keysInit()
   gpio_init(KEYS_GPIO_PIN_PAGE,  GPIO_IN_PU, GPIO_PIN_SPEED_LOW);
   gpio_init(KEYS_GPIO_PIN_ENTER, GPIO_IN_PU, GPIO_PIN_SPEED_LOW);
 
-#if defined(ROTARY_ENCODER_NAVIGATION)
-  gpio_init(ENC_GPIO_PIN_A, GPIO_IN_PU, GPIO_PIN_SPEED_LOW);
-  gpio_init(ENC_GPIO_PIN_B, GPIO_IN_PU, GPIO_PIN_SPEED_LOW);
-  rotencPositionValue = ROTARY_ENCODER_POSITION();
-#endif
+  // Rotary encoder pins are configured by the common rotary encoder driver
+  // (targets/common/arm/stm32/rotary_encoder_driver.cpp) from
+  // rotaryEncoderInit() — don't double-init here.
 }

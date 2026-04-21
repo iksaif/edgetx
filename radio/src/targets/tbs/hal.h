@@ -41,20 +41,40 @@
   #define KEYS_GPIO_PIN_ENTER               GPIO_PIN(GPIOD, 4)
 
   // Rotary Encoder
+  // The modern targets/common/arm/stm32/rotary_encoder_driver.cpp uses two
+  // naming conventions at the same time:
+  //   * ENC_GPIO_PIN_A/_B — gpio_t (GPIO_PIN(port, n)) — used by this
+  //     target's keys_driver in read paths.
+  //   * ROTARY_ENCODER_GPIO + _GPIO_PIN_A/_B — raw GPIOx port pointer
+  //     and LL_GPIO_PIN_n bitmasks — used by LL_GPIO_Init / GPIOx->IDR
+  //     inside the common driver.
+  // Both pins are on GPIOA (PA.8 = A, PA.10 = B) so we use the single-port
+  // branch of the common driver (ROTARY_ENCODER_GPIO without _A/_B split).
   #define ROTARY_ENCODER_NAVIGATION
+  #define ROTARY_ENCODER_GRANULARITY        2
+
   #define ENC_GPIO_PIN_A                    GPIO_PIN(GPIOA, 8)
   #define ENC_GPIO_PIN_B                    GPIO_PIN(GPIOA, 10)
-  #define ROTARY_ENCODER_POSITION()         ((GPIOA->IDR >> 9) & 0x02) + ((GPIOA->IDR >> 8) & 0x01)
-  #define ROTARY_ENCODER_EXTI_LINE1         LL_EXTI_LINE_8
-  #define ROTARY_ENCODER_EXTI_IRQn1         EXTI9_5_IRQn
-  #define ROTARY_ENCODER_EXTI_IRQHandler1   EXTI9_5_IRQHandler
-  #define ROTARY_ENCODER_EXTI_PortSource    LL_SYSCFG_EXTI_PORTA
-  #define ROTARY_ENCODER_EXTI_PinSource1    LL_SYSCFG_EXTI_LINE8
 
-  #if defined(ROTARY_ENCODER_NAVIGATION)
-    #define ROTARY_ENCODER_TIMER            TIM10
-    #define ROTARY_ENCODER_TIMER_IRQn       TIM1_UP_TIM10_IRQn
-  #endif
+  #define ROTARY_ENCODER_GPIO               GPIOA
+  #define ROTARY_ENCODER_GPIO_PIN_A         LL_GPIO_PIN_8
+  #define ROTARY_ENCODER_GPIO_PIN_B         LL_GPIO_PIN_10
+
+  // ROTARY_ENCODER_POSITION is read inside an ISR — go straight to IDR.
+  // Produces { B_bit | A_bit } as a 2-bit value 0..3.
+  #define ROTARY_ENCODER_POSITION() \
+      (((GPIOA->IDR >> 9) & 0x02) | ((GPIOA->IDR >> 8) & 0x01))
+
+  #define ROTARY_ENCODER_EXTI_LINE1         LL_EXTI_LINE_8
+  #define ROTARY_ENCODER_EXTI_LINE2         LL_EXTI_LINE_10
+  #define ROTARY_ENCODER_EXTI_PORT          LL_SYSCFG_EXTI_PORTA
+  #define ROTARY_ENCODER_EXTI_SYS_LINE1     LL_SYSCFG_EXTI_LINE8
+  #define ROTARY_ENCODER_EXTI_SYS_LINE2     LL_SYSCFG_EXTI_LINE10
+
+  // TIM10 drives the 100 µs debounce/settle tick the common driver uses.
+  #define ROTARY_ENCODER_TIMER              TIM10
+  #define ROTARY_ENCODER_TIMER_IRQn         TIM1_UP_TIM10_IRQn
+  #define ROTARY_ENCODER_TIMER_IRQHandler   TIM1_UP_TIM10_IRQHandler
 
   // AUX Serial
   #define AUX_SERIAL_USART                  UART4
@@ -176,17 +196,31 @@
   #define SD_PRESENT_GPIO                   GPIO_PIN(GPIOC, 5)
   #define STORAGE_USE_SDIO
 
-  // Audio
+  // Audio — DAC1 channel 1 on PA.4, driven by TIM6 through DMA1 Stream 5
+  // (same pinout as X7 / XLITE family).
+  #define AUDIO_OUTPUT_GPIO                 GPIO_PIN(GPIOA, 4)
+  #define AUDIO_DMA                         DMA1
+  #define AUDIO_DMA_Stream                  DMA1_Stream5
+  #define AUDIO_DMA_Stream_IRQn             DMA1_Stream5_IRQn
+  #define AUDIO_DMA_Stream_IRQHandler       DMA1_Stream5_IRQHandler
+  #define AUDIO_TIMER                       TIM6
+  // Mute pin (amp enable) — TANGO uses PD.5, MAMBO uses PE.0.
   #if defined(RADIO_TANGO)
-    #define AUDIO_MUTE_GPIO                 GPIOD
-    #define AUDIO_MUTE_GPIO_PIN             GPIO_PIN(GPIOD, 5)  // PD.05
+    #define AUDIO_MUTE_GPIO                 GPIO_PIN(GPIOD, 5)
   #elif defined(RADIO_MAMBO)
-    #define AUDIO_MUTE_GPIO                 GPIOE
-    #define AUDIO_MUTE_GPIO_PIN             GPIO_PIN(GPIOE, 0)  // PE.00
+    #define AUDIO_MUTE_GPIO                 GPIO_PIN(GPIOE, 0)
   #endif
 
   // Haptic
   #define HAPTIC_GPIO                       GPIO_PIN(GPIOB, 0)  // PB.00
+
+  // Power / soft-power-latch (TBS Tango II schematics)
+  // PB.14 = power switch read (active high — we invert in pwr_driver
+  // via gpio_read)
+  // PB.12 = "keep radio on" latch driven by firmware; set high to stay on,
+  // clear low to cut power. Held by an external P-MOSFET gate circuit.
+  #define PWR_SWITCH_GPIO                   GPIO_PIN(GPIOB, 14)
+  #define PWR_ON_GPIO                       GPIO_PIN(GPIOB, 12)
 
   // Timers
   #define MS_TIMER                          TIM14

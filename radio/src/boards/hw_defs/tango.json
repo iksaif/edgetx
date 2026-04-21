@@ -14,38 +14,6 @@
     ],
     "inputs": [
       {
-        "name": "LH",
-        "type": "STICK",
-        "adc": "MAIN",
-        "gpio": null,
-        "pin": null,
-        "channel": null
-      },
-      {
-        "name": "LV",
-        "type": "STICK",
-        "adc": "MAIN",
-        "gpio": null,
-        "pin": null,
-        "channel": null
-      },
-      {
-        "name": "RV",
-        "type": "STICK",
-        "adc": "MAIN",
-        "gpio": null,
-        "pin": null,
-        "channel": null
-      },
-      {
-        "name": "RH",
-        "type": "STICK",
-        "adc": "MAIN",
-        "gpio": null,
-        "pin": null,
-        "channel": null
-      },
-      {
         "name": "VBAT",
         "type": "VBAT",
         "adc": "MAIN",
@@ -167,5 +135,11 @@
     "surface": 0,
     "cpu": "STM32F413xx",
     "cpu_type": "STM32F4"
-  }
+  },
+  "_notes": [
+    "TANGO sticks are Hall-effect gimbals read by the CRSF co-processor blob",
+    "at CROSSFIRE_TASK_ADDRESS, NOT by the main MCU's ADC. Stick values show",
+    "up in crossfireSharedData.sticks[] via the shared-memory ABI. VBAT is",
+    "the only real ADC channel on the main MCU for this board."
+  ]
 }
