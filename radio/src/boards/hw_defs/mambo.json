@@ -45,6 +45,59 @@
       }
     ]
   },
+  "switches": [
+    {
+      "name": "SE",
+      "type": "2POS",
+      "gpio": "GPIOE",
+      "pin": "LL_GPIO_PIN_5",
+      "default": "2POS",
+      "display": [0, 0]
+    },
+    {
+      "name": "SF",
+      "type": "2POS",
+      "gpio": "GPIOE",
+      "pin": "LL_GPIO_PIN_4",
+      "default": "2POS",
+      "display": [0, 0]
+    }
+  ],
+  "keys": [
+    {
+      "gpio": "GPIOD",
+      "pin": "LL_GPIO_PIN_13",
+      "active_low": true,
+      "key": "KEY_MENU",
+      "name": "MENU",
+      "label": "MENU"
+    },
+    {
+      "gpio": "GPIOD",
+      "pin": "LL_GPIO_PIN_14",
+      "active_low": true,
+      "key": "KEY_EXIT",
+      "name": "EXIT",
+      "label": "EXIT"
+    },
+    {
+      "gpio": "GPIOD",
+      "pin": "LL_GPIO_PIN_12",
+      "active_low": true,
+      "key": "KEY_PAGEDN",
+      "name": "PAGEDN",
+      "label": "PAGE"
+    },
+    {
+      "gpio": "GPIOD",
+      "pin": "LL_GPIO_PIN_4",
+      "active_low": true,
+      "key": "KEY_ENTER",
+      "name": "ENTER",
+      "label": "ENTER"
+    }
+  ],
+  "trims": [],
   "display": {
     "w": 128,
     "h": 64,
@@ -55,6 +108,10 @@
     "oled": 0,
     "backlight_color": 0
   },
+  "custom_switches": {
+    "rgb_led": 0,
+    "groups": 0
+  },
   "hardware": {
     "has_audio_mute": 0,
     "has_bling_leds": 0,
@@ -64,5 +121,15 @@
     "surface": 0,
     "cpu": "STM32F407xx",
     "cpu_type": "STM32F4"
-  }
+  },
+  "_notes": [
+    "MAMBO keys are GPIO-matrix PD.13/14/12/4 (same as TANGO).",
+    "Physical switches SE (PE.05) and SF (PE.04) only. On the legacy",
+    "tbs-merge hardware switches A/B/C/D are read through an ADC",
+    "multiplexer (see ADC_CHANNEL_SWITCH_* in the legacy hal.h); they'd",
+    "need to come back as FLEX inputs with custom thresholds in Phase B,",
+    "or as multipos entries if the hardware actually has digital readout.",
+    "Sticks on MAMBO (as on TANGO) are handled by the CRSF co-processor",
+    "blob through crossfireSharedData, NOT the main MCU ADC."
+  ]
 }

@@ -118,6 +118,11 @@ set(BOARD_COMMON_SRC
   targets/tbs/board.cpp
   targets/tbs/haptic_driver.cpp
   targets/tbs/${LCD_DRIVER}
+  # backlight_driver.cpp must be in BOARD_COMMON_SRC (not firmware-only):
+  # boardOff() calls BACKLIGHT_DISABLE(), which on MAMBO expands to a real
+  # function (backlightDisable), and boardOff is reachable from both the
+  # bootloader and the firmware.
+  targets/tbs/backlight_driver.cpp
   # TBS-specific pwr_driver (active-high power switch — the common
   # targets/common/arm/stm32/pwr_driver.cpp assumes active-low).
   targets/tbs/pwr_driver.cpp
@@ -136,7 +141,6 @@ add_library(board_bl OBJECT EXCLUDE_FROM_ALL
 # mixer-scheduler / module-timer drivers that boards/generic_stm32/
 # module_ports.cpp and switches.cpp reference.
 set(FIRMWARE_BOARD_EXTRA_SRC
-  targets/tbs/backlight_driver.cpp
   targets/tbs/crsf_tasks.cpp
   targets/tbs/keys_driver.cpp
   targets/tbs/tbs_stubs.cpp
