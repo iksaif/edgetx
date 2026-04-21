@@ -120,22 +120,56 @@ void intmoduleSendBuffer(unsigned char const*, unsigned char)
 }
 #endif
 
+// RTC backup register layout on F413 (20 × 32-bit BKPxR words).
+//   BKP0R, BKP1R : SET_POWER_REASON (value + POWER_REASON_SIGNATURE)
+//   BKP2R..BKP12R: readBackupReg(index) / writeBackupReg(index, val),
+//                  with index being the BKREG_INDEX enum from
+//                  io/crsf/crossfire.h. (11 values, fits in 11 regs.)
+// The legacy TBS firmware used BKPSRAM (4 KB, not present on F413) for the
+// BKREG_* region and only BKP0R/BKP1R for the power-reason signature. The
+// RTC backup registers survive reset AND power-off (backed by VBAT), which
+// is the same persistence guarantee BKPSRAM had.
+#define TBS_BKREG_OFFSET 2
+
+static volatile uint32_t* tbs_bkp_reg(uint8_t index)
+{
+  // BKP0R..BKP19R are contiguous __IO uint32_t in the RTC_TypeDef struct;
+  // index off the base to reach BKPxR[index + offset].
+  return &(&RTC->BKP0R)[index + TBS_BKREG_OFFSET];
+}
+
+uint32_t readBackupReg(uint8_t index)
+{
+  return *tbs_bkp_reg(index);
+}
+
+void writeBackupReg(uint8_t index, uint32_t data)
+{
+  // Unlock backup-domain write access, then write. RCC/PWR clocks are
+  // already on by boardInit(); we only need to set DBP.
+  PWR->CR |= PWR_CR_DBP;
+  *tbs_bkp_reg(index) = data;
+}
+
 void SET_POWER_REASON(uint32_t value)
 {
+  PWR->CR |= PWR_CR_DBP;
   RTC->BKP0R = value;
   RTC->BKP1R = POWER_REASON_SIGNATURE;
 }
 
 uint32_t bkregGetStatusFlag(uint32_t flag) {
-  return RTC->BKP0R & (1 << flag);
+  return readBackupReg(BKREG_STATUS_FLAG) & (1u << flag);
 }
 
 void bkregSetStatusFlag(uint32_t flag) {
-  RTC->BKP0R |= (1 << flag);
+  uint32_t v = readBackupReg(BKREG_STATUS_FLAG);
+  writeBackupReg(BKREG_STATUS_FLAG, v | (1u << flag));
 }
 
 void bkregClrStatusFlag(uint32_t flag) {
-  RTC->BKP0R &= ~(1 << flag);
+  uint32_t v = readBackupReg(BKREG_STATUS_FLAG);
+  writeBackupReg(BKREG_STATUS_FLAG, v & ~(1u << flag));
 }
 
 static uint8_t isDisableBoardOff() {

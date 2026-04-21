@@ -73,18 +73,12 @@ __attribute__((weak)) char _ccm_heap_start[1] = {0};
 __attribute__((weak)) char _ccm_heap_end[1]   = {0};
 }
 
-// ----------------------------------------------------------------------------
-// io/crsf/ functions not currently compiled — crsfInit / crsfGetHWID /
-// crossfireTurnOn/OffRf / crossfirePowerOff / isCrossfireRfOn. They live in
-// radio/src/io/crsf/*.cpp which is not in any CMakeLists. Wire those files
-// in as part of Phase C (they depend on the blob / shared memory layout).
-// ----------------------------------------------------------------------------
-void crsfInit() {}
-uint32_t crsfGetHWID() { return 0; }
-void crossfireTurnOnRf() {}
-void crossfireTurnOffRf(bool /*ask*/) {}
-void crossfirePowerOff() {}
-bool isCrossfireRfOn() { return false; }
+// crsfInit / crsfGetHWID / crossfireTurnOnRf / crossfireTurnOffRf /
+// crossfirePowerOff / isCrossfireRfOn / crsfSharedFifoHandler /
+// updateIntCrossfireChannels / currentCrsfModelId /
+// libCrsf{MySlaveAddress,MyDeviceName,MyHwID,MySerialNo,MyFwID} are now
+// provided by targets/tbs/crossfire_glue.cpp + io/crsf/crsf.cpp etc.
+// (wired into FIRMWARE_BOARD_EXTRA_SRC in C.3).
 
 // ----------------------------------------------------------------------------
 // Speaker volume, mixer scheduler, RTC, rotary encoder, pulse ISR

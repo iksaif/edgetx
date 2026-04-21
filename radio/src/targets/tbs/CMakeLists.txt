@@ -130,6 +130,16 @@ set(FIRMWARE_BOARD_EXTRA_SRC
   targets/tbs/crsf_tasks.cpp
   targets/tbs/keys_driver.cpp
   targets/tbs/tbs_stubs.cpp
+  # Protocol-only layer of libcrsf (no OpenTX coupling). crossfire.cpp is
+  # intentionally NOT listed here — it bridges libcrsf to the radio GUI,
+  # backup-register, and RF-off popup, uses StdPeriph RCC / BKPSRAM (F413
+  # doesn't have BKPSRAM), and references removed STR_* translations. A
+  # modern thin replacement lives in targets/tbs/crossfire_glue.cpp.
+  io/crsf/crc8.cpp
+  io/crsf/crsf.cpp
+  io/crsf/crsf_utilities.cpp
+  io/crsf/crsf_write.cpp
+  targets/tbs/crossfire_glue.cpp
   targets/common/arm/stm32/stm32_pulse_driver.cpp
   targets/common/arm/stm32/stm32_softserial_driver.cpp
   targets/common/arm/stm32/stm32_switch_driver.cpp
