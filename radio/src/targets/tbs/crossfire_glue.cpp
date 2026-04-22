@@ -81,7 +81,17 @@ void crsfInit()
 
 uint32_t crsfGetHWID()
 {
-  return readBackupReg(BKREG_HW_ID_XF);
+  // Matches the legacy crossfire.cpp::crsfGetHWID() semantics: return the
+  // radio-side HWID that crsfInit() above read from BKREG_HW_ID_RADIO and
+  // cached into libCrsfMyHwID (before wiping the backup slot). The
+  // TANGO pcbrev low nibble comes out of this value; board.cpp:
+  //   hardwareOptions.pcbrev = crsfGetHWID() & 0x0F;
+  // Reading BKREG_HW_ID_XF here would be wrong on two counts:
+  //   1. BKREG_HW_ID_XF is the *co-processor* HWID, not the radio's.
+  //   2. The blob hasn't started yet when boardInit() first calls this
+  //      — the slot is 0 on a cold boot, which selected the V2 battery
+  //      scale on every first power-up.
+  return libCrsfMyHwID;
 }
 
 // TBS RF on/off is toggled by setting a flag in crossfireSharedData and
@@ -152,15 +162,25 @@ void crsfToSharedFIFO(uint8_t* pArr)
 void crsfThisDevice(uint8_t* pArr)
 {
 #ifdef LIBCRSF_ENABLE_COMMAND
-  // Command frame (0x32) from the RF module with sub-sub =
-  // RC_RX_CMD.REPLY_CURRENT_MODEL → third payload byte is the model
-  // number currently active in the receiver. We track this to know
-  // whether the Set-Model-ID handshake has converged.
-  if (*(pArr + LIBCRSF_TYPE_ADD) == LIBCRSF_CMD_FRAME &&
-      *(pArr + LIBCRSF_EXT_PAYLOAD_START_ADD)     == LIBCRSF_RC_RX_CMD &&
-      *(pArr + LIBCRSF_EXT_PAYLOAD_START_ADD + 1) == LIBCRSF_RC_RX_REPLY_CURRENT_MODEL_SUBCMD) {
-    currentCrsfModelId = *(pArr + LIBCRSF_EXT_PAYLOAD_START_ADD + 2);
-    return;
+  // Command frame (0x32) from the RF module. Besides the outer POLYNOM_1
+  // CRC that libCrsfParse already checked, CMD frames carry an inner
+  // POLYNOM_2 CRC that TBS uses to guard the subcommand payload — verify
+  // it before trusting any bytes, matching the legacy crossfire.cpp behaviour.
+  if (*(pArr + LIBCRSF_TYPE_ADD) == LIBCRSF_CMD_FRAME) {
+    uint8_t plen = *(pArr + LIBCRSF_LENGTH_ADD);
+    uint8_t innerCrc =
+        libCRC8GetCRCArr(pArr + LIBCRSF_TYPE_ADD, plen - 2, POLYNOM_2);
+    if (*(pArr + plen + LIBCRSF_HEADER_OFFSET - 1) != innerCrc) {
+      return; // corrupted CMD frame — drop silently, don't push to telemetry
+    }
+    // RC_RX_CMD.REPLY_CURRENT_MODEL: third payload byte is the model
+    // number the receiver believes is active. Tracked to know whether
+    // the Set-Model-ID handshake has converged.
+    if (*(pArr + LIBCRSF_EXT_PAYLOAD_START_ADD)     == LIBCRSF_RC_RX_CMD &&
+        *(pArr + LIBCRSF_EXT_PAYLOAD_START_ADD + 1) == LIBCRSF_RC_RX_REPLY_CURRENT_MODEL_SUBCMD) {
+      currentCrsfModelId = *(pArr + LIBCRSF_EXT_PAYLOAD_START_ADD + 2);
+      return;
+    }
   }
 #endif
 
