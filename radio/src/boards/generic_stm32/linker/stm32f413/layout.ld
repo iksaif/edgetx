@@ -14,11 +14,18 @@ MIN_HEAP_SIZE = 0;
 /* Highest heap address */
 HEAP_ADDRESS = STACK_ADDRESS - MAIN_STACK_SIZE;
 
-/* Specify the memory areas */
+/* Specify the memory areas.
+ * The __flash_size symbol is injected via -Wl,--defsym=__flash_size=${TARGET_FLASH_SIZE}
+ * from radio/src/CMakeLists.txt. This mirrors the pattern used by
+ * stm32f40x/layout.ld and lets TBS targets reserve the upper flash for the
+ * CRSF blob at 0x080C0020 (set TARGET_FLASH_SIZE = 768K in the target
+ * CMakeLists). Non-TBS F413 users get the full 1 MB default. */
 MEMORY
 {
-  FLASH (rx)      : ORIGIN = 0x08000000, LENGTH = 1024K
-  RAM (xrw)       : ORIGIN = 0x20000000, LENGTH = 320K
+  FLASH (rx) :
+      ORIGIN = 0x08000000,
+      LENGTH = DEFINED(__flash_size) ? __flash_size : 1024K
+  RAM (xrw)  : ORIGIN = 0x20000000, LENGTH = 320K
 }
 
 REGION_ALIAS("REGION_BOOTLOADER",   FLASH);

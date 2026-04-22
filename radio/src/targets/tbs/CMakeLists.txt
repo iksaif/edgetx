@@ -35,7 +35,14 @@ if (PCB STREQUAL TANGO)
   set(LCD_DEPTH 4)
   set(CPU_TYPE_FULL STM32F413xG)
   set(TARGET_LINKER_DIR stm32f413)
-  set(TARGET_FLASH_SIZE 1M)
+  # Physical F413 has 1 MB of flash, but we reserve the upper 256 KB
+  # (0x080C0020..0x08100000) for the TBS CRSF blob. TARGET_FLASH_SIZE is
+  # what we tell the linker via --defsym=__flash_size; stm32f413/layout.ld
+  # picks it up. The bootloader also caps writes at FLASHSIZE - BOOTLOADER_SIZE
+  # (board.h FLASHSIZE = 0xC0000) so any attempt to flash a too-big firmware
+  # is bounded runtime-side too. If firmware ever exceeds 0xC0000 - 0x8000
+  # = 752 KB, the link fails loudly instead of silently bricking the blob.
+  set(TARGET_FLASH_SIZE 768K)
   add_definitions(-DRADIO_TANGO)
   add_definitions(-DSTM32F40_41xxx -DSTM32F413xx -DPCBTANGO)
 elseif(PCB STREQUAL MAMBO)
@@ -46,7 +53,9 @@ elseif(PCB STREQUAL MAMBO)
   # ABI at 0x10000000. The plain stm32f40x dir puts .data/.bss at that
   # address, which silently corrupts the blob's view of the struct.
   set(TARGET_LINKER_DIR stm32f40x_tbs)
-  set(TARGET_FLASH_SIZE 1M)
+  # Same blob-region reserve as TANGO — MAMBO ships on F407 (1 MB variant),
+  # upper 256 KB is the CRSF blob.
+  set(TARGET_FLASH_SIZE 768K)
   # HARDWARE_TRIMS was defined by the legacy tbs-merge code but has no
   # consumers in modern EdgeTX — trims on MAMBO are sampled via the generic
   # switch driver from hw_defs/mambo.json. Intentionally not defined.
