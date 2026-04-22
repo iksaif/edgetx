@@ -130,6 +130,10 @@ typedef enum {
   LIBCRSF_EX_PARAM_LAST_ADDRESS             = 0x96
 } libCrsf_FrameTypesNum;
 
+/* Command-frame (0x32) subgroups and sub-subcommands (LIBCRSF_RC_RX_CMD,
+ * LIBCRSF_GENERAL_CMD, ...MODEL_SELECTION_SUBCMD, etc.) are defined in
+ * crsf_write.h behind LIBCRSF_ENABLE_COMMAND. */
+
 #define LIBCRSF_EXT_HEADER_RANGE_START      LIBCRSF_EX_PARAM_PING_DEVICE
 #define LIBCRSF_EXT_HEADER_RANGE_STOP       LIBCRSF_EX_PARAM_LAST_ADDRESS
 

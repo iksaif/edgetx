@@ -79,6 +79,14 @@ set(LCD_DRIVER lcd_driver_spi.cpp)
 if(INTERNAL_MODULE_CRSF)
   add_definitions(-DHARDWARE_INTERNAL_MODULE)
   add_definitions(-DINTERNAL_MODULE_CRSF)
+  # Enables the LIBCRSF_CMD_FRAME (0x32) command frame path in
+  # io/crsf/crsf.h + crossfire_glue.cpp — used for the model-ID
+  # handshake between EdgeTX and the Tango II CRSF blob / RF module.
+  # The other LIBCRSF_ENABLE_* flags (PARAMETER, OPENTX_RELATED) stay
+  # off: PARAMETER is for settings-entry UI we don't have, and
+  # OPENTX_RELATED is the SD-over-CRSF debug protocol used internally
+  # by TBS for support tooling.
+  add_definitions(-DLIBCRSF_ENABLE_COMMAND)
 endif()
 
 set(HSE_VALUE 8000000)

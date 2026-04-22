@@ -34,6 +34,11 @@
 #include "io/crsf/crossfire.h"
 #include "io/crsf/crsf_write.h"
 #include "io/crsf/crsf_utilities.h"
+#include "io/crsf/crc8.h"
+
+// Declared in libcrsf's crsf_utilities.cpp — writes one byte into a frame
+// buffer and advances the count. Needed to build command frames below.
+extern void libUtilWrite8(uint8_t* pArr, uint32_t* pCount, uint8_t value);
 
 // Backing FIFO for telemetry frames targeted at DEVICE_INTERNAL.
 // crossfire.h declares this extern elsewhere in the tree; owning the
@@ -141,10 +146,24 @@ void crsfToSharedFIFO(uint8_t* pArr)
 }
 
 // Rx: handler for frames destined to DEVICE_INTERNAL (EdgeTX itself).
-// For now we buffer telemetry into intCrsfTelemetryFifo and drop everything
-// else — the full device-ping/setting/command machinery is Phase D.
+// Recognised command frames update internal state; everything else is
+// buffered into intCrsfTelemetryFifo so the telemetry subsystem can
+// drain it at its own pace.
 void crsfThisDevice(uint8_t* pArr)
 {
+#ifdef LIBCRSF_ENABLE_COMMAND
+  // Command frame (0x32) from the RF module with sub-sub =
+  // RC_RX_CMD.REPLY_CURRENT_MODEL → third payload byte is the model
+  // number currently active in the receiver. We track this to know
+  // whether the Set-Model-ID handshake has converged.
+  if (*(pArr + LIBCRSF_TYPE_ADD) == LIBCRSF_CMD_FRAME &&
+      *(pArr + LIBCRSF_EXT_PAYLOAD_START_ADD)     == LIBCRSF_RC_RX_CMD &&
+      *(pArr + LIBCRSF_EXT_PAYLOAD_START_ADD + 1) == LIBCRSF_RC_RX_REPLY_CURRENT_MODEL_SUBCMD) {
+    currentCrsfModelId = *(pArr + LIBCRSF_EXT_PAYLOAD_START_ADD + 2);
+    return;
+  }
+#endif
+
   uint8_t len = *(pArr + LIBCRSF_LENGTH_ADD) + 2;
   for (uint8_t i = 0; i < len; i++) {
     intCrsfTelemetryFifo.push(*(pArr + i));
@@ -166,16 +185,54 @@ void crsfSharedFifoHandler()
   }
 }
 
+#ifdef LIBCRSF_ENABLE_COMMAND
+// Build a 0x32 command frame targeting the RF-module receiver path, with
+// the given RC_RX subsubcommand and an optional payload byte. Sends the
+// finished frame through the shared FIFO to the blob. Common between
+// Set-Model-ID (push our active model number) and Get-Model-ID (poll the
+// receiver's notion of active model number).
+static void tbs_crsf_send_rc_rx_cmd(uint8_t subsubcmd, uint8_t payload)
+{
+  uint8_t txBuf[LIBCRSF_MAX_BUFFER_SIZE];
+  uint32_t count = 0;
+
+  libUtilWrite8(txBuf, &count, LIBCRSF_UART_SYNC);       /* sync */
+  libUtilWrite8(txBuf, &count, 0);                       /* frame length (filled in below) */
+  libUtilWrite8(txBuf, &count, LIBCRSF_CMD_FRAME);       /* type = 0x32 */
+  libUtilWrite8(txBuf, &count, LIBCRSF_RC_TX);           /* destination = RC TX module */
+  libUtilWrite8(txBuf, &count, LIBCRSF_REMOTE_ADD);      /* origin = us */
+  libUtilWrite8(txBuf, &count, LIBCRSF_RC_RX_CMD);       /* cmd subgroup = RC RX */
+  libUtilWrite8(txBuf, &count, subsubcmd);               /* sub-sub action */
+  libUtilWrite8(txBuf, &count, payload);                 /* payload byte */
+
+  /* Two CRC8s, matching the frame layout TBS expects: inner CRC covers
+   * [type..payload] with POLYNOM_2; outer covers same range with POLYNOM_1. */
+  uint8_t crc2 = libCRC8GetCRCArr(&txBuf[2], count - 2, POLYNOM_2);
+  libUtilWrite8(txBuf, &count, crc2);
+  uint8_t crc1 = libCRC8GetCRCArr(&txBuf[2], count - 2, POLYNOM_1);
+  libUtilWrite8(txBuf, &count, crc1);
+
+  txBuf[LIBCRSF_LENGTH_ADD] = count - 2;
+  crsfToSharedFIFO(txBuf);
+}
+
 void crsfSetModelID()
 {
-  // Stubbed — full implementation needs LIBCRSF_CMD_FRAME / LIBCRSF_RC_RX_CMD
-  // enums that the current libcrsf headers don't export. Phase D.
+  tbs_crsf_send_rc_rx_cmd(LIBCRSF_RC_RX_MODEL_SELECTION_SUBCMD,
+                          g_model.header.modelId[INTERNAL_MODULE]);
 }
 
 void crsfGetModelID()
 {
-  // Stubbed — same reason as above.
+  /* Payload byte is a don't-care for the "query" subcommand — the RF
+   * module replies with REPLY_CURRENT_MODEL_SUBCMD which crsfThisDevice()
+   * turns into a write to currentCrsfModelId. */
+  tbs_crsf_send_rc_rx_cmd(LIBCRSF_RC_RX_CURRENT_MODEL_SELECTION_SUBCMD, 0);
 }
+#else
+void crsfSetModelID() {}
+void crsfGetModelID() {}
+#endif
 
 void updateIntCrossfireChannels()
 {
