@@ -1,5 +1,11 @@
 # TBS Tango II / Mambo — Flashing Runbook
 
+> ⚠️ **Read "Prerequisites" at the end of this doc first.** The stock
+> TBS bootloader expects a DIFFERENT flash layout than ours (48 KB vs
+> 32 KB reserve). Flashing only `firmware.bin` on a stock radio will
+> brick it until you re-flash via DFU. Always flash BOTH `bootloader.bin`
+> and `firmware.bin` together.
+
 After a `make firmware` build, the two artifacts you flash to the radio:
 
 | File | Build path | Size | Flash address |
@@ -124,3 +130,75 @@ After the first successful flash, verify in order:
 
 If the radio boots to the model screen with working keys, VBAT, and
 navigation, Phase B is done. Everything else is Phase C / D.
+
+---
+
+## Prerequisites — must do before Phase B.5
+
+Two things will silently brick a live Tango II if you skip them. Both
+were discovered by inspecting a production Tango II SD card + firmware
+image.
+
+### 1. Hardware revision check — is your chip F407 or F413?
+
+Production TBS firmware is compiled for STM32F407 (128 KB SRAM, SP top
+`0x20020000`) to cover both early PCB revisions (F407-native) and later
+ones (F413, backwards-compatible). Our port is **F413-specific**:
+`CMakeLists.txt` sets `CPU_TYPE_FULL = STM32F413xG`, giving us 320 KB
+SRAM and the F413 peripheral map.
+
+If you flash an F413 build on an F407-rev Tango II, at minimum you'll
+lose SRAM (the linker places the stack at `0x20050000`, which is past
+the end of F407's 128 KB SRAM — stack writes hit a bus fault). The
+`tbs_verify_cpu_or_halt()` safety net in `boardInit()` reads
+`DBGMCU->IDCODE` and refuses to latch power if the chip doesn't match
+the build:
+
+- F413/F423 → `DEV_ID = 0x463`
+- F407/F417 → `DEV_ID = 0x413`
+
+If you boot and the radio cuts power the instant you release the power
+button, that's the check firing. **Solutions**:
+1. Flash an F407-compatible build — requires changing `CPU_TYPE_FULL` in
+   `radio/src/targets/tbs/CMakeLists.txt` to `STM32F407xE` and
+   `TARGET_LINKER_DIR` to `stm32f40x_tbs` (MAMBO already does this).
+2. Or visually inspect the LQFP100 chip silkscreen on the main PCB
+   before flashing — reads either "STM32F407xx" or "STM32F413xx".
+
+### 2. Always flash BOTH `bootloader.bin` AND `firmware.bin`
+
+The stock TBS bootloader uses the tbs-merge memory layout:
+`BOOTLOADER_SIZE = 0xC000` (48 KB), firmware starts at `0x0800C000`.
+Our port uses the modern EdgeTX layout: `BOOTLOADER_SIZE = 0x8000`
+(32 KB), firmware at `0x08008000`.
+
+If you only flash our `firmware.bin` at `0x08008000` and leave the
+stock bootloader in place:
+1. On boot the stock bootloader jumps to `APP_START_ADDRESS = 0x0800C000`.
+2. That address is 16 KB into our firmware — somewhere in the middle
+   of `.text`. Not a valid Cortex-M vector table.
+3. The chip fetches garbage as the initial SP and Reset_Handler →
+   hard-fault → repeat forever.
+4. Radio appears bricked. You'll need SWD to recover.
+
+**Always flash both**. The runbook commands at the top of this doc flash
+both in the correct order. If you want to be extra safe, also erase the
+entire main flash first with `STM32_Programmer_CLI -c port=SWD -e all`
+before programming — that wipes any stale blob from `0x080C0020` and
+starts completely fresh.
+
+### 3. Have a recovery plan
+
+Before flashing a dev build for the first time, confirm you can get back
+to the stock TBS firmware:
+- Download the latest TBS Agent X (macOS/Windows/Linux) BEFORE you need
+  it. Package ID is something like `TBS_AGENT_X_INSTALLER`.
+- TBS Agent's "Firmware → Recovery" flow rewrites both the radio
+  firmware AND the CRSF blob region. If our dev build overwrites the
+  blob area (which `TARGET_FLASH_SIZE = 768K` + the `0xB8020` write
+  ceiling in `bin_fw_files.cpp` prevent, but belt-and-suspenders), TBS
+  Agent Recovery is the way back.
+- An ST-Link V2 or V3 clone (~$10) + `openocd` gives you a
+  bootloader-independent route to re-flash anything from scratch. Pads
+  for SWDIO/SWCLK/NRST live under the battery cover on most Tango II
+  revs.

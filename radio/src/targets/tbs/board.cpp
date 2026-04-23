@@ -211,8 +211,48 @@ void runPwrOffCharging()
   }
 }
 
+// Build-time expected DEV_ID for the chip CMakeLists.txt targets. These
+// are the low 12 bits of DBGMCU->IDCODE (RM0430 / RM0090).
+//   STM32F405/407/415/417 = 0x413   (MAMBO — F407xE, also early-rev TANGO)
+//   STM32F413/423          = 0x463   (TANGO — F413xG, later rev)
+// If the MCU on the actual device returns something else we refuse to
+// init so the user doesn't run a build whose peripheral map doesn't
+// match its silicon.
+#if defined(STM32F413xx)
+#define TBS_EXPECTED_DEV_ID  0x463U
+#elif defined(STM32F407xx)
+#define TBS_EXPECTED_DEV_ID  0x413U
+#else
+#error "TBS: no DEV_ID expectation for this chip; update board.cpp"
+#endif
+
+static void tbs_verify_cpu_or_halt()
+{
+  uint32_t idcode = DBGMCU->IDCODE;
+  uint32_t dev_id = idcode & 0xFFFU;
+  if (dev_id == TBS_EXPECTED_DEV_ID) {
+    return; // match — all good
+  }
+  // Mismatch: refuse to latch power and spin. The user's press of the
+  // power button is held through a soft-latch circuit on PWR_ON_GPIO;
+  // by not calling pwrOn() we guarantee the radio drops power the
+  // moment the button is released. Far less bad than booting on a
+  // wrong-ID chip (wrong SRAM size, wrong peripheral map — likely
+  // hard-faults somewhere subtle and leaves the blob region in an
+  // undefined state on flash regions that DO line up).
+  while (1) {
+    /* wait for the user to release the power button — hardware drops
+       our Vdd and we reset into the bootloader next plug-in */
+  }
+}
+
 void boardInit()
 {
+  // First thing we do: check the chip matches our build. If not, refuse
+  // to power-latch and spin. Peripheral accesses further down will
+  // hard-fault on a wrong chip in ways that are much harder to diagnose.
+  tbs_verify_cpu_or_halt();
+
   bool skipCharging = false;
 
   pwrInit();
