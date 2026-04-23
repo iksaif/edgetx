@@ -236,13 +236,17 @@ uint32_t pwrCheck();
 // Backlight driver
 #define BACKLIGHT_TIMEOUT_MIN           2
 #define BACKLIGHT_FORCED_ON             101
+// On TANGO the "backlight" is really the LCD bias/ref voltage; for MAMBO
+// there's a real backlight LED. Both flavours expose a function-like
+// backlightDisable() — TANGO via macro aliasing to lcdOff(), MAMBO via a
+// proper function in backlight_driver.cpp. BACKLIGHT_DISABLE() is then
+// defined once below, resolving to whichever form this target provides.
 #if defined(RADIO_TANGO)
   #define backlightDisable()              lcdOff()
   #define isBacklightEnabled()            isLcdOn()
 #elif defined(RADIO_MAMBO)
   void backlightInit(void);
   void backlightDisable(void);
-  #define BACKLIGHT_DISABLE()             backlightDisable()
   uint8_t isBacklightEnabled(void);
 #endif
 void backlightEnable(uint8_t level);
